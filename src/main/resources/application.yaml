@@ -1,0 +1,23 @@
+spring:
+  server:
+    port: ${SERVER_PORT}
+  application:
+    name: mcp
+  ai:
+    mcp:
+      server:
+        name: amaliai-mcp-server
+        type: SYNC
+        transport: SSE
+        capabilities:
+          resource: false
+          prompt: false
+          tool: true
+        resource-change-notification: false
+        false-change-notification: false
+        tool-change-notification: true
+        request-timeout: 30s
+
+backend:
+  api:
+    url: ${BACKEND_API_URL}
