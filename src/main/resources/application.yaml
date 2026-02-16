@@ -21,3 +21,6 @@ spring:
 backend:
   api:
     url: ${BACKEND_API_URL}
+  integrations:
+    share-point:
+      tenant-id: ${SHAREPOINT_TENANT_ID}
