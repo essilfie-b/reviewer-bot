@@ -3,8 +3,6 @@ package com.amaliai.mcp.servers.sharepoint;
 /**
  * Groups the optional filter parameters for the {@code searchDocuments} tool.
  * <p>
- * Using a parameter object keeps the tool method signature within the 7-parameter
- * limit (SonarQube rule java:S107) and makes the optional vs. required distinction
  * explicit in the tool schema.
  *
  * @param fileType optional extension to keep — allowed values: docx, pdf, xlsx, pptx, txt, csv, md, html, xml
