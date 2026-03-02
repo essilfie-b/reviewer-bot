@@ -13,6 +13,7 @@ public class McpApplication {
 
   public static void main(String[] args) {
     SpringApplication.run(McpApplication.class, args);
+
   }
 
   @Bean
