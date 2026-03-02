@@ -8,7 +8,7 @@ spring:
       server:
         name: amaliai-mcp-server
         type: SYNC
-        transport: SSE
+#        transport: SSE
         capabilities:
           resource: false
           prompt: false
@@ -17,6 +17,7 @@ spring:
         false-change-notification: false
         tool-change-notification: true
         request-timeout: 30s
+        sse-endpoint: /sse
 
 backend:
   api:
