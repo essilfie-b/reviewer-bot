@@ -103,4 +103,58 @@ public class SharePointGraphClient {
                 .retrieve()
                 .body(byte[].class);
     }
+
+    // -------------------------------------------------------------------------
+    // SharePoint Sites API
+    // -------------------------------------------------------------------------
+
+    /**
+     * Lists SharePoint sites the authenticated user has access to.
+     * Uses the /sites?search=* endpoint to retrieve all accessible sites.
+     */
+    public String fetchUserSites(String token, int top) {
+        log.debug("Graph: GET /sites?search=* top={}", top);
+        return graphClient.get()
+                .uri(b -> b.path("/sites")
+                        .queryParam("search", "*")
+                        .queryParam("$select", "id,name,displayName,webUrl,description,createdDateTime,lastModifiedDateTime")
+                        .queryParam("$top", top)
+                        .build())
+                .header(HttpHeaders.AUTHORIZATION, BEARER_PREFIX + token)
+                .retrieve()
+                .body(String.class);
+    }
+
+    /**
+     * Fetches details for a specific SharePoint site by its ID.
+     *
+     * @param siteId the SharePoint site ID (format: {hostname},{site-collection-id},{web-id})
+     */
+    public String fetchSiteDetails(String token, String siteId) {
+        log.debug("Graph: GET /sites/{}", siteId);
+        return graphClient.get()
+                .uri(b -> b.path("/sites/{siteId}")
+                        .queryParam("$select", "id,name,displayName,webUrl,description,createdDateTime,lastModifiedDateTime,root")
+                        .build(siteId))
+                .header(HttpHeaders.AUTHORIZATION, BEARER_PREFIX + token)
+                .retrieve()
+                .body(String.class);
+    }
+
+    /**
+     * Lists document libraries (drives) in a SharePoint site.
+     *
+     * @param siteId the SharePoint site ID
+     */
+    public String fetchSiteLibraries(String token, String siteId, int top) {
+        log.debug("Graph: GET /sites/{}/drives top={}", siteId, top);
+        return graphClient.get()
+                .uri(b -> b.path("/sites/{siteId}/drives")
+                        .queryParam("$select", "id,name,description,webUrl,driveType,createdDateTime,lastModifiedDateTime,quota")
+                        .queryParam("$top", top)
+                        .build(siteId))
+                .header(HttpHeaders.AUTHORIZATION, BEARER_PREFIX + token)
+                .retrieve()
+                .body(String.class);
+    }
 }
