@@ -9,6 +9,7 @@ import com.amaliai.mcp.servers.sharepoint.validator.SharePointValidator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -142,6 +143,53 @@ public class SharePointService {
     }
 
     // -------------------------------------------------------------------------
+    // SharePoint Sites operations
+    // -------------------------------------------------------------------------
+
+    /**
+     * Lists SharePoint sites the user has access to.
+     *
+     * @param top maximum number of sites to return (default 20, max 50)
+     */
+    public String listSites(String token, Integer top) {
+        int limit = (top == null || top <= 0) ? DEFAULT_TOP : Math.min(top, MAX_TOP);
+        String raw = graphClient.fetchUserSites(token, limit);
+        String parsed = parseSitesResponse(raw);
+        return responseUtil.trimResponse(parsed, MAX_RESPONSE_BYTES);
+    }
+
+    /**
+     * Gets details of a specific SharePoint site.
+     *
+     * @throws IllegalArgumentException if {@code siteId} is blank
+     */
+    public String getSiteDetails(String token, String siteId) {
+        if (siteId == null || siteId.isBlank()) {
+            throw new IllegalArgumentException("siteId must not be empty");
+        }
+        String raw = graphClient.fetchSiteDetails(token, siteId);
+        String parsed = parseSiteDetailsResponse(raw);
+        return responseUtil.trimResponse(parsed, MAX_RESPONSE_BYTES);
+    }
+
+    /**
+     * Lists document libraries in a SharePoint site.
+     *
+     * @param siteId the SharePoint site ID
+     * @param top    maximum number of libraries to return (default 20, max 50)
+     * @throws IllegalArgumentException if {@code siteId} is blank
+     */
+    public String listLibraries(String token, String siteId, Integer top) {
+        if (siteId == null || siteId.isBlank()) {
+            throw new IllegalArgumentException("siteId must not be empty");
+        }
+        int limit = (top == null || top <= 0) ? DEFAULT_TOP : Math.min(top, MAX_TOP);
+        String raw = graphClient.fetchSiteLibraries(token, siteId, limit);
+        String parsed = parseLibrariesResponse(raw);
+        return responseUtil.trimResponse(parsed, MAX_RESPONSE_BYTES);
+    }
+
+    // -------------------------------------------------------------------------
     // Private helpers
     // -------------------------------------------------------------------------
 
@@ -156,6 +204,85 @@ public class SharePointService {
             return OBJECT_MAPPER.readTree(json);
         } catch (JsonProcessingException e) {
             throw new SharePointOperationException("Failed to parse JSON for " + context, e);
+        }
+    }
+
+    /** Parses the Graph API sites response into a simplified JSON array. */
+    private String parseSitesResponse(String responseBody) {
+        try {
+            JsonNode sites = OBJECT_MAPPER.readTree(responseBody).path("value");
+            ArrayNode results = OBJECT_MAPPER.createArrayNode();
+
+            for (JsonNode site : sites) {
+                ObjectNode parsed = OBJECT_MAPPER.createObjectNode();
+                parsed.put("id", site.path("id").asText(null));
+                parsed.put("name", site.path("name").asText(null));
+                parsed.put("displayName", site.path("displayName").asText(null));
+                parsed.put("webUrl", site.path("webUrl").asText(null));
+                parsed.put("description", site.path("description").asText(null));
+                parsed.put("createdDateTime", site.path("createdDateTime").asText(null));
+                parsed.put("lastModifiedDateTime", site.path("lastModifiedDateTime").asText(null));
+                results.add(parsed);
+            }
+
+            return OBJECT_MAPPER.writeValueAsString(results);
+        } catch (JsonProcessingException e) {
+            throw new SharePointOperationException("Failed to parse Graph API sites response", e);
+        }
+    }
+
+    /** Parses the Graph API site details response into a simplified JSON object. */
+    private String parseSiteDetailsResponse(String responseBody) {
+        try {
+            JsonNode site = OBJECT_MAPPER.readTree(responseBody);
+            ObjectNode result = OBJECT_MAPPER.createObjectNode();
+            result.put("id", site.path("id").asText(null));
+            result.put("name", site.path("name").asText(null));
+            result.put("displayName", site.path("displayName").asText(null));
+            result.put("webUrl", site.path("webUrl").asText(null));
+            result.put("description", site.path("description").asText(null));
+            result.put("createdDateTime", site.path("createdDateTime").asText(null));
+            result.put("lastModifiedDateTime", site.path("lastModifiedDateTime").asText(null));
+            result.put("isRoot", site.has("root"));
+            return OBJECT_MAPPER.writeValueAsString(result);
+        } catch (JsonProcessingException e) {
+            throw new SharePointOperationException("Failed to parse Graph API site details response", e);
+        }
+    }
+
+    /** Parses the Graph API drives (libraries) response into a simplified JSON array. */
+    private String parseLibrariesResponse(String responseBody) {
+        try {
+            JsonNode drives = OBJECT_MAPPER.readTree(responseBody).path("value");
+            ArrayNode results = OBJECT_MAPPER.createArrayNode();
+
+            for (JsonNode drive : drives) {
+                ObjectNode parsed = OBJECT_MAPPER.createObjectNode();
+                parsed.put("id", drive.path("id").asText(null));
+                parsed.put("name", drive.path("name").asText(null));
+                parsed.put("description", drive.path("description").asText(null));
+                parsed.put("webUrl", drive.path("webUrl").asText(null));
+                parsed.put("driveType", drive.path("driveType").asText(null));
+                parsed.put("createdDateTime", drive.path("createdDateTime").asText(null));
+                parsed.put("lastModifiedDateTime", drive.path("lastModifiedDateTime").asText(null));
+
+                // Include quota information if available
+                JsonNode quota = drive.path("quota");
+                if (!quota.isMissingNode()) {
+                    ObjectNode quotaNode = OBJECT_MAPPER.createObjectNode();
+                    quotaNode.put("total", quota.path("total").asLong(0L));
+                    quotaNode.put("used", quota.path("used").asLong(0L));
+                    quotaNode.put("remaining", quota.path("remaining").asLong(0L));
+                    quotaNode.put("state", quota.path("state").asText(null));
+                    parsed.set("quota", quotaNode);
+                }
+
+                results.add(parsed);
+            }
+
+            return OBJECT_MAPPER.writeValueAsString(results);
+        } catch (JsonProcessingException e) {
+            throw new SharePointOperationException("Failed to parse Graph API libraries response", e);
         }
     }
 }

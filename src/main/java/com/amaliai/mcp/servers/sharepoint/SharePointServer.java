@@ -73,4 +73,42 @@ public class SharePointServer {
         String token = tokenManager.getAccessToken(armsUserId, UUID.fromString(integrationId));
         return sharePointService.getDocumentContent(token, itemId);
     }
+
+    @Tool(description = "Lists all SharePoint sites the authenticated user has access to. "
+            + "Returns site IDs, names, display names, URLs, descriptions, and timestamps. "
+            + "Use the returned 'id' field with getSiteDetails or listLibraries to explore a site.")
+    public String listSites(
+            @ToolParam(description = "The ARMS user ID of the authenticated user") int armsUserId,
+            @ToolParam(description = "The SharePoint integration ID (UUID format)") String integrationId,
+            @ToolParam(description = "Maximum number of sites to return (default 20, max 50)", required = false) Integer top) {
+
+        String token = tokenManager.getAccessToken(armsUserId, UUID.fromString(integrationId));
+        return sharePointService.listSites(token, top);
+    }
+
+    @Tool(description = "Gets detailed information about a specific SharePoint site. "
+            + "Returns site ID, name, display name, URL, description, creation date, last modified date, and whether it's a root site. "
+            + "Use the 'id' field from listSites as the siteId.")
+    public String getSiteDetails(
+            @ToolParam(description = "The ARMS user ID of the authenticated user") int armsUserId,
+            @ToolParam(description = "The SharePoint integration ID (UUID format)") String integrationId,
+            @ToolParam(description = "The SharePoint site ID (from listSites)") String siteId) {
+
+        String token = tokenManager.getAccessToken(armsUserId, UUID.fromString(integrationId));
+        return sharePointService.getSiteDetails(token, siteId);
+    }
+
+    @Tool(description = "Lists document libraries (drives) in a SharePoint site. "
+            + "Returns library IDs, names, descriptions, URLs, drive types, timestamps, and storage quota information. "
+            + "Use the 'id' field from listSites as the siteId. "
+            + "The returned library 'id' can be used to access documents within that library.")
+    public String listLibraries(
+            @ToolParam(description = "The ARMS user ID of the authenticated user") int armsUserId,
+            @ToolParam(description = "The SharePoint integration ID (UUID format)") String integrationId,
+            @ToolParam(description = "The SharePoint site ID (from listSites)") String siteId,
+            @ToolParam(description = "Maximum number of libraries to return (default 20, max 50)", required = false) Integer top) {
+
+        String token = tokenManager.getAccessToken(armsUserId, UUID.fromString(integrationId));
+        return sharePointService.listLibraries(token, siteId, top);
+    }
 }
