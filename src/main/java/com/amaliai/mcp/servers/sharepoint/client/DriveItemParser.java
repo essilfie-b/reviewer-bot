@@ -31,17 +31,31 @@ public class DriveItemParser {
      * @throws SharePointOperationException if the response body cannot be parsed
      */
     public String parse(String responseBody, String fileTypeFilter, String authorFilter) {
+        return parse(responseBody, fileTypeFilter, authorFilter, false);
+    }
+
+    /**
+     * Parses the Graph API response body and returns a JSON array string.
+     *
+     * @param responseBody   raw JSON from the Graph API ({@code "value": [...]})
+     * @param fileTypeFilter optional extension to keep (e.g. {@code "xlsx"}); {@code null} = all
+     * @param authorFilter   optional substring match on the creator's display name; {@code null} = all
+     * @param includeFolders when {@code true}, folder items are included with {@code "itemType":"folder"}
+     * @throws SharePointOperationException if the response body cannot be parsed
+     */
+    public String parse(String responseBody, String fileTypeFilter, String authorFilter, boolean includeFolders) {
         try {
             JsonNode items = OBJECT_MAPPER.readTree(responseBody).path("value");
             ArrayNode results = OBJECT_MAPPER.createArrayNode();
 
             for (JsonNode item : items) {
-                if (item.has("folder")) continue;
+                boolean isFolder = item.has("folder");
+                if (isFolder && !includeFolders) continue;
 
                 String name      = item.path("name").asText("");
                 String createdBy = item.path("createdBy").path("user").path("displayName").asText(null);
 
-                if (fileTypeFilter != null
+                if (!isFolder && fileTypeFilter != null
                         && !name.toLowerCase().endsWith("." + fileTypeFilter.toLowerCase())) continue;
 
                 if (authorFilter != null && !authorFilter.isBlank()
@@ -51,6 +65,7 @@ public class DriveItemParser {
                 ObjectNode doc = OBJECT_MAPPER.createObjectNode();
                 doc.put("id",             item.path("id").asText(null));
                 doc.put("name",           name);
+                doc.put("itemType",       isFolder ? "folder" : "file");
                 doc.put("webUrl",         item.path("webUrl").asText(null));
                 doc.put("sizeBytes",      item.path("size").asLong(0L));
                 doc.put("lastModified",   item.path("lastModifiedDateTime").asText(null));
@@ -58,8 +73,10 @@ public class DriveItemParser {
                 doc.put("lastModifiedBy", item.path("lastModifiedBy")
                         .path("user").path("displayName").asText(null));
 
-                int dot = name.lastIndexOf('.');
-                if (dot >= 0) doc.put("fileType", name.substring(dot + 1).toLowerCase());
+                if (!isFolder) {
+                    int dot = name.lastIndexOf('.');
+                    if (dot >= 0) doc.put("fileType", name.substring(dot + 1).toLowerCase());
+                }
 
                 results.add(doc);
             }

@@ -60,6 +60,21 @@ public class SharePointServer {
                 filter != null ? filter.top()      : null);
     }
 
+    @Tool(description = "Lists the contents of a specific folder in the user's OneDrive. "
+            + "Returns both files and sub-folders with their IDs, names, item type (file/folder), "
+            + "URLs, sizes, and last modified dates. "
+            + "Use the 'id' field from getDocuments or a previous getFolderContents call as the folderId. "
+            + "Use the returned file 'id' with getDocumentContent to read a file's content, "
+            + "or with getFolderContents to navigate into a sub-folder.")
+    public String getFolderContents(
+            @ToolParam(description = "The ARMS user ID of the authenticated user") int armsUserId,
+            @ToolParam(description = "The SharePoint integration ID (UUID format)") String integrationId,
+            @ToolParam(description = "The drive item ID of the folder to list") String folderId) {
+
+        String token = tokenManager.getAccessToken(armsUserId, UUID.fromString(integrationId));
+        return sharePointService.getFolderContents(token, folderId);
+    }
+
     @Tool(description = "Returns metadata for a single file in the user's OneDrive: "
             + "id, name, file type, MIME type, size, web URL, who created it, creation date, "
             + "who last modified it, and the last modification date. "

@@ -58,6 +58,20 @@ public class SharePointService {
     }
 
     /**
+     * Lists files and sub-folders inside a specific folder.
+     *
+     * @throws IllegalArgumentException if {@code folderId} is blank
+     */
+    public String getFolderContents(String token, String folderId) {
+        if (folderId == null || folderId.isBlank()) {
+            throw new IllegalArgumentException("folderId must not be empty");
+        }
+        String raw    = graphClient.fetchFolderChildren(token, folderId);
+        String parsed = driveItemParser.parse(raw, null, null, true);
+        return responseUtil.trimResponse(parsed, MAX_RESPONSE_BYTES);
+    }
+
+    /**
      * Searches the user's OneDrive and optionally filters by type, author, and date.
      *
      * @throws IllegalArgumentException if {@code query} is blank, {@code fileType} is unknown,

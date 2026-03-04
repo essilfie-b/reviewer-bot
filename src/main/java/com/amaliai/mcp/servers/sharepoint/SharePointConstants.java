@@ -23,6 +23,7 @@ public final class SharePointConstants {
     public static final String TOOL_LIST_SITES = "listSites";
     public static final String TOOL_SITE_DETAILS = "getSiteDetails";
     public static final String TOOL_LIST_LIBRARIES = "listLibraries";
+    public static final String TOOL_FOLDER   = "getFolderContents";
 
     // -------------------------------------------------------------------------
     // Allowed / supported file types

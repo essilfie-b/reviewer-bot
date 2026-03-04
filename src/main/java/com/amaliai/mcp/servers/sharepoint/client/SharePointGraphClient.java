@@ -88,6 +88,23 @@ public class SharePointGraphClient {
     }
 
     /**
+     * Lists files and folders inside a specific folder by its drive item ID,
+     * ordered by most-recently-modified first.
+     */
+    public String fetchFolderChildren(String token, String folderId) {
+        log.debug("Graph: GET /me/drive/items/{}/children", folderId);
+        return graphClient.get()
+                .uri(b -> b.path("/me/drive/items/{id}/children")
+                        .queryParam("$select", SELECT_ITEM_FIELDS)
+                        .queryParam("$top", MAX_TOP)
+                        .queryParam("$orderby", "lastModifiedDateTime desc")
+                        .build(folderId))
+                .header(HttpHeaders.AUTHORIZATION, BEARER_PREFIX + token)
+                .retrieve()
+                .body(String.class);
+    }
+
+    /**
      * Fetches full metadata for a single drive item, including creation and modification details.
      */
     public String fetchItemFullMetadata(String token, String itemId) {
