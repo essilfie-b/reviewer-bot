@@ -88,6 +88,22 @@ public class SharePointGraphClient {
     }
 
     /**
+     * Fetches full metadata for a single drive item, including creation and modification details.
+     */
+    public String fetchItemFullMetadata(String token, String itemId) {
+        log.debug("Graph: GET /me/drive/items/{}/full-metadata", itemId);
+        return graphClient.get()
+                .uri(b -> b.path("/me/drive/items/{id}")
+                        .queryParam("$select",
+                                "id,name,size,webUrl,createdBy,createdDateTime," +
+                                "lastModifiedBy,lastModifiedDateTime,file")
+                        .build(itemId))
+                .header(HttpHeaders.AUTHORIZATION, BEARER_PREFIX + token)
+                .retrieve()
+                .body(String.class);
+    }
+
+    /**
      * Downloads raw file bytes.
      * <p>
      * Graph API responds with HTTP 302 → CDN; the configured {@link RestClient}
