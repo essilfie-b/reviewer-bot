@@ -58,6 +58,20 @@ public class SharePointService {
     }
 
     /**
+     * Lists files and sub-folders inside a specific folder.
+     *
+     * @throws IllegalArgumentException if {@code folderId} is blank
+     */
+    public String getFolderContents(String token, String folderId) {
+        if (folderId == null || folderId.isBlank()) {
+            throw new IllegalArgumentException("folderId must not be empty");
+        }
+        String raw    = graphClient.fetchFolderChildren(token, folderId);
+        String parsed = driveItemParser.parse(raw, null, null, true);
+        return responseUtil.trimResponse(parsed, MAX_RESPONSE_BYTES);
+    }
+
+    /**
      * Searches the user's OneDrive and optionally filters by type, author, and date.
      *
      * @throws IllegalArgumentException if {@code query} is blank, {@code fileType} is unknown,
@@ -139,6 +153,41 @@ public class SharePointService {
             return OBJECT_MAPPER.writeValueAsString(result);
         } catch (JsonProcessingException e) {
             throw new SharePointOperationException("Failed to serialize document content response", e);
+        }
+    }
+
+    /**
+     * Fetches and returns rich metadata for a single drive item.
+     *
+     * @throws IllegalArgumentException if {@code itemId} is blank
+     */
+    public String getFileMetadata(String token, String itemId) {
+        if (itemId == null || itemId.isBlank()) {
+            throw new IllegalArgumentException("itemId must not be empty");
+        }
+
+        String raw = graphClient.fetchItemFullMetadata(token, itemId);
+        JsonNode item = parseJson(raw, "item metadata for itemId=" + itemId);
+
+        String name = item.path("name").asText("");
+        int dot = name.lastIndexOf('.');
+        String fileType = dot >= 0 ? name.substring(dot + 1).toLowerCase() : "";
+
+        ObjectNode result = OBJECT_MAPPER.createObjectNode();
+        result.put("name",                 name);
+        result.put("fileType",             fileType.isEmpty() ? null : fileType);
+        result.put("mimeType",             item.path("file").path("mimeType").asText(null));
+        result.put("sizeBytes",            item.path("size").asLong(0L));
+        result.put("webUrl",               item.path("webUrl").asText(null));
+        result.put("createdBy",            item.path("createdBy").path("user").path("displayName").asText(null));
+        result.put("createdDateTime",      item.path("createdDateTime").asText(null));
+        result.put("lastModifiedBy",       item.path("lastModifiedBy").path("user").path("displayName").asText(null));
+        result.put("lastModifiedDateTime", item.path("lastModifiedDateTime").asText(null));
+
+        try {
+            return OBJECT_MAPPER.writeValueAsString(result);
+        } catch (JsonProcessingException e) {
+            throw new SharePointOperationException("Failed to serialize file metadata response", e);
         }
     }
 

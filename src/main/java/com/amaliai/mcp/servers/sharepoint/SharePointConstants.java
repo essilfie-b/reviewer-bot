@@ -16,12 +16,14 @@ public final class SharePointConstants {
     // Tool names
     // -------------------------------------------------------------------------
 
-    public static final String TOOL_SEARCH     = "searchDocuments";
-    public static final String TOOL_GET        = "getDocuments";
-    public static final String TOOL_CONTENT    = "getDocumentContent";
+    public static final String TOOL_SEARCH   = "searchDocuments";
+    public static final String TOOL_GET      = "getDocuments";
+    public static final String TOOL_CONTENT  = "getDocumentContent";
+    public static final String TOOL_METADATA = "getFileMetadata";
     public static final String TOOL_LIST_SITES = "listSites";
     public static final String TOOL_SITE_DETAILS = "getSiteDetails";
     public static final String TOOL_LIST_LIBRARIES = "listLibraries";
+    public static final String TOOL_FOLDER   = "getFolderContents";
 
     // -------------------------------------------------------------------------
     // Allowed / supported file types
