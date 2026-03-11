@@ -21,29 +21,38 @@ public class RestClientConfig {
 
   @Bean
   public RestClient backendApiClient() {
+    HttpClient httpClient = HttpClient.newBuilder()
+        .connectTimeout(java.time.Duration.ofSeconds(3))
+        .build();
+    JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(httpClient);
+    factory.setReadTimeout(java.time.Duration.ofSeconds(5));
     return RestClient.builder()
         .baseUrl(backendApiUrl)
+        .requestFactory(factory)
         .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
         .build();
   }
 
-    @Bean
-    public RestClient graphClient() {
-        // Graph API's /content endpoint returns a 302 redirect to a CDN download URL.
-        // Java's HttpClient defaults to Redirect.NEVER, so we must opt in to Redirect.NORMAL.
-        // NORMAL follows redirects but strips the Authorization header on cross-host redirects,
-        // which is correct: the CDN pre-signed URL doesn't need (and shouldn't receive) the token.
-        HttpClient httpClient = HttpClient.newBuilder()
-                .followRedirects(HttpClient.Redirect.NORMAL)
-                .build();
+  @Bean
+  public RestClient graphClient() {
+    // Graph API's /content endpoint returns a 302 redirect to a CDN download URL.
+    // Java's HttpClient defaults to Redirect.NEVER, so we must opt in to
+    // Redirect.NORMAL.
+    // NORMAL follows redirects but strips the Authorization header on cross-host
+    // redirects,
+    // which is correct: the CDN pre-signed URL doesn't need (and shouldn't receive)
+    // the token.
+    HttpClient httpClient = HttpClient.newBuilder()
+        .followRedirects(HttpClient.Redirect.NORMAL)
+        .build();
 
-        return RestClient.builder()
-                .baseUrl("https://graph.microsoft.com/v1.0")
-                .requestFactory(new JdkClientHttpRequestFactory(httpClient))
-                .defaultHeaders(defaultHeader -> {
-                    defaultHeader.setContentType(MediaType.APPLICATION_JSON);
-                    defaultHeader.setAccept(List.of(MediaType.APPLICATION_JSON));
-                })
-                .build();
-    }
+    return RestClient.builder()
+        .baseUrl("https://graph.microsoft.com/v1.0")
+        .requestFactory(new JdkClientHttpRequestFactory(httpClient))
+        .defaultHeaders(defaultHeader -> {
+          defaultHeader.setContentType(MediaType.APPLICATION_JSON);
+          defaultHeader.setAccept(List.of(MediaType.APPLICATION_JSON));
+        })
+        .build();
+  }
 }
