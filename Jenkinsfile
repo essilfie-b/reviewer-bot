@@ -18,6 +18,7 @@ pipeline {
 
     stage('Build (Maven)') {
       steps {
+        sh 'chmod +x mvnw'
         sh './mvnw clean package -Dmaven.test.skip'
       }
     }
