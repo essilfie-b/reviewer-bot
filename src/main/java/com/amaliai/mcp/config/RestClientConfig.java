@@ -21,8 +21,14 @@ public class RestClientConfig {
 
   @Bean
   public RestClient backendApiClient() {
+    HttpClient httpClient = HttpClient.newBuilder()
+        .connectTimeout(java.time.Duration.ofSeconds(3))
+        .build();
+    JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(httpClient);
+    factory.setReadTimeout(java.time.Duration.ofSeconds(5));
     return RestClient.builder()
         .baseUrl(backendApiUrl)
+        .requestFactory(factory)
         .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
         .build();
   }
