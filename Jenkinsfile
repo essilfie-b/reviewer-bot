@@ -22,6 +22,16 @@ pipeline {
       }
     }
 
+    stage('SonarQube Analysis') {
+      steps {
+        script {
+          withSonarQubeEnv('sonar-server') {
+            sh 'mvn sonar:sonar'
+          }
+        }
+      }
+    }
+
     stage('Build and Push Docker Image') {
       when {
         anyOf {
