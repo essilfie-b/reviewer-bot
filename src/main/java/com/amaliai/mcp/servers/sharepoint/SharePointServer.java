@@ -147,10 +147,10 @@ public class SharePointServer {
             + "Use the 'id' field from getDocuments or searchDocuments as the itemId.")
     public String downloadFile(
             @ToolParam(description = "The ARMS user ID of the authenticated user") int armsUserId,
-            @ToolParam(description = "The SharePoint integration ID (UUID format)") String integrationId,
             @ToolParam(description = "The drive item ID of the file to download (from getDocuments or searchDocuments)") String itemId) {
 
-        String token = tokenManager.getAccessToken(armsUserId, UUID.fromString(integrationId));
+        UUID integrationId = tokenManager.resolveIntegrationId();
+        String token = tokenManager.getAccessToken(armsUserId, integrationId);
         return sharePointService.getFileDownloadUrl(token, itemId);
     }
 }
