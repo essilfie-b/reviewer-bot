@@ -135,8 +135,22 @@ public class SharePointServer {
                         @ToolParam(description = "The SharePoint site ID (from listSites)") String siteId,
                         @ToolParam(description = "Maximum number of libraries to return (default 20, max 50)", required = false) Integer top) {
 
-                UUID integrationId = tokenManager.resolveIntegrationId();
-                String token = tokenManager.getAccessToken(armsUserId, integrationId);
-                return sharePointService.listLibraries(token, siteId, top);
-        }
+            UUID integrationId = tokenManager.resolveIntegrationId();
+            String token = tokenManager.getAccessToken(armsUserId, integrationId);
+            return sharePointService.listLibraries(token, siteId, top);
+    }
+
+    @Tool(description = "Generates a direct, time-limited download URL for a file in the user's OneDrive or SharePoint. "
+            + "Returns the file name, type, MIME type, size in bytes, and a pre-signed 'downloadUrl' that the user can open "
+            + "in a browser or use with any HTTP client to download the actual file — no further authentication is required. "
+            + "The URL is typically valid for approximately 1 hour. "
+            + "Use the 'id' field from getDocuments or searchDocuments as the itemId.")
+    public String downloadFile(
+            @ToolParam(description = "The ARMS user ID of the authenticated user") int armsUserId,
+            @ToolParam(description = "The SharePoint integration ID (UUID format)") String integrationId,
+            @ToolParam(description = "The drive item ID of the file to download (from getDocuments or searchDocuments)") String itemId) {
+
+        String token = tokenManager.getAccessToken(armsUserId, UUID.fromString(integrationId));
+        return sharePointService.getFileDownloadUrl(token, itemId);
+    }
 }
