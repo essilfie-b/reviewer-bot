@@ -191,6 +191,54 @@ public class SharePointService {
         }
     }
 
+    /**
+     * Returns a time-limited CDN download URL for a drive item so the caller
+     * can fetch the raw file bytes without going through the Graph API again.
+     *
+     * <p>The URL is a pre-signed Microsoft CDN link (typically valid for ~1 hour).
+     *
+     * @throws IllegalArgumentException if {@code itemId} is blank or no downloadable URL is found
+     */
+    public String getFileDownloadUrl(String token, String itemId) {
+        if (itemId == null || itemId.isBlank()) {
+            throw new IllegalArgumentException("itemId must not be empty");
+        }
+
+        // Fetch metadata so we can include humanly useful info alongside the URL
+        JsonNode metadata = parseJson(graphClient.fetchItemFullMetadata(token, itemId),
+                "item metadata for itemId=" + itemId);
+
+        String name     = metadata.path("name").asText("");
+        String mimeType = metadata.path("file").path("mimeType").asText(null);
+        long   size     = metadata.path("size").asLong(0L);
+        String ext      = fileExtension(name);
+
+        // Resolve the CDN download URL (Graph returns 302 → pre-signed URL)
+        String downloadUrl = graphClient.fetchDownloadUrl(token, itemId);
+        if (downloadUrl == null || downloadUrl.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Could not obtain a download URL for file '" + name + "'. "
+                    + "The file may not be downloadable or access is restricted.");
+        }
+
+        // Append download=1 so the CDN sends Content-Disposition: attachment,
+        // which causes browsers to save the file rather than open it in a tab.
+        String forceDownloadUrl = downloadUrl + (downloadUrl.contains("?") ? "&" : "?") + "download=1";
+
+        ObjectNode result = OBJECT_MAPPER.createObjectNode();
+        result.put("name",        name);
+        result.put("fileType",    ext.isEmpty() ? null : ext);
+        result.put("mimeType",    mimeType);
+        result.put("sizeBytes",   size);
+        result.put("downloadUrl", forceDownloadUrl);
+
+        try {
+            return OBJECT_MAPPER.writeValueAsString(result);
+        } catch (JsonProcessingException e) {
+            throw new SharePointOperationException("Failed to serialize download URL response", e);
+        }
+    }
+
     // -------------------------------------------------------------------------
     // SharePoint Sites operations
     // -------------------------------------------------------------------------
