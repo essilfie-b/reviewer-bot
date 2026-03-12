@@ -2,10 +2,13 @@ package com.amaliai.mcp.servers.sharepoint.client;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import java.net.URI;
 import java.util.List;
 
 import static com.amaliai.mcp.servers.sharepoint.SharePointConstants.*;
@@ -22,13 +25,20 @@ import static com.amaliai.mcp.servers.sharepoint.SharePointConstants.*;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class SharePointGraphClient {
 
     private static final String SELECT_ITEM_FIELDS =
             "id,name,webUrl,createdBy,lastModifiedBy,lastModifiedDateTime,size,file,folder";
 
     private final RestClient graphClient;
+    private final RestClient graphClientNoRedirect;
+
+    public SharePointGraphClient(
+            @Qualifier("graphClient") RestClient graphClient,
+            @Qualifier("graphClientNoRedirect") RestClient graphClientNoRedirect) {
+        this.graphClient = graphClient;
+        this.graphClientNoRedirect = graphClientNoRedirect;
+    }
 
     /**
      * Lists files and folders at the root of the user's OneDrive,
@@ -135,6 +145,27 @@ public class SharePointGraphClient {
                 .header(HttpHeaders.AUTHORIZATION, BEARER_PREFIX + token)
                 .retrieve()
                 .body(byte[].class);
+    }
+
+    /**
+     * Fetches a time-limited CDN download URL for a drive item by hitting the
+     * {@code /content} endpoint and capturing the {@code Location} header from
+     * the HTTP 302 redirect, without following it.
+     *
+     * @return the pre-signed CDN URL, or {@code null} if no Location header was present
+     */
+    public String fetchDownloadUrl(String token, String itemId) {
+        log.debug("Graph: GET /me/drive/items/{}/content (no-redirect, capture Location)", itemId);
+        final String[] locationHolder = new String[1];
+        graphClientNoRedirect.get()
+                .uri(b -> b.path("/me/drive/items/{id}/content").build(itemId))
+                .header(HttpHeaders.AUTHORIZATION, BEARER_PREFIX + token)
+                .exchange((request, response) -> {
+                    URI location = response.getHeaders().getLocation();
+                    locationHolder[0] = location != null ? location.toString() : null;
+                    return null;
+                });
+        return locationHolder[0];
     }
 
     // -------------------------------------------------------------------------
