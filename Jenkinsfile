@@ -26,7 +26,7 @@ pipeline {
       steps {
         script {
           withSonarQubeEnv('SonarQube') {
-            sh 'mvn sonar:sonar'
+            sh 'mvn sonar:sonar -Dsonar.projectKey=Amali-Tech_amaliai-mcp_AZVnRMMaUsyuKjicNfq7'
           }
         }
       }
