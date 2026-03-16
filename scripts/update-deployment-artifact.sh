@@ -10,7 +10,8 @@ sed -i "s|image: ai-mcp|image: $imageTag|g" "docker-compose.yml"
 
 cat <<EOF > scripts/after-install.sh 
 #!/bin/bash
-aws ecr get-login-password --region 'eu-west-1' | docker login --username AWS --password-stdin $imageTag
+aws ecr get-login-password --region eu-west-1 \
+| docker login --username AWS --password-stdin 867344436491.dkr.ecr.eu-west-1.amazonaws.com
  
 EOF
 
