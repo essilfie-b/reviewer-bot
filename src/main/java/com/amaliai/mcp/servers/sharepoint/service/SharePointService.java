@@ -110,6 +110,31 @@ public class SharePointService {
         long   sizeBytes = metadata.path("size").asLong(0L);
         String ext       = fileExtension(name);
 
+        String webUrl = metadata.path("webUrl").asText(null);
+
+        // Extract Site, Library, and Folder details
+        String site = null;
+        String library = null;
+        String folder = null;
+
+        JsonNode parentReference = metadata.path("parentReference");
+        if (!parentReference.isMissingNode()) {
+            library = parentReference.path("name").asText(null);
+            String path = parentReference.path("path").asText("");
+            if (path.contains("/root:")) {
+                String[] parts = path.split("/root:");
+                if (parts.length > 1) {
+                    folder = parts[1].startsWith("/") ? parts[1].substring(1) : parts[1];
+                }
+            }
+            if (webUrl != null && webUrl.contains("/sites/")) {
+                String[] urlParts = webUrl.split("/sites/");
+                if (urlParts.length > 1) {
+                    site = urlParts[1].split("/")[0];
+                }
+            }
+        }
+
         String typeError = validator.validateContentType(ext);
         if (typeError != null) throw new IllegalArgumentException(typeError);
 
@@ -147,6 +172,10 @@ public class SharePointService {
         result.put("name",      name);
         result.put("fileType",  ext);
         result.put("sizeBytes", sizeBytes);
+        result.put("url",       webUrl);
+        result.put("site",      site);
+        result.put("library",   library);
+        result.put("folder",    folder);
         result.put("truncated", truncated);
         result.put("content",   content);
         try {

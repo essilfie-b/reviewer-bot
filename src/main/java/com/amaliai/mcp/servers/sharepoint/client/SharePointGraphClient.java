@@ -90,7 +90,7 @@ public class SharePointGraphClient {
         log.debug("Graph: GET /me/drive/items/{}/metadata", itemId);
         return graphClient.get()
                 .uri(b -> b.path("/me/drive/items/{id}")
-                        .queryParam("$select", "name,size,file")
+                        .queryParam("$select", "name,size,webUrl,parentReference,file")
                         .build(itemId))
                 .header(HttpHeaders.AUTHORIZATION, BEARER_PREFIX + token)
                 .retrieve()
