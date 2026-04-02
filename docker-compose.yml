@@ -1,0 +1,10 @@
+services:
+  ai-mcp:
+    image: ai-mcp
+    container_name: ai-mcp
+    ports:
+      - "8081:8080"
+    env_file:
+      - .env
+    restart: on-failure
+    mem_limit: "512m"
