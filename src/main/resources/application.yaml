@@ -23,6 +23,7 @@ spring:
 backend:
   api:
     url: ${BACKEND_API_URL}
+    key: ${MCP_API_KEY}
   integrations:
     share-point:
       tenant-id: ${SHAREPOINT_TENANT_ID}

@@ -16,6 +16,9 @@ public class RestClientConfig {
   @Value("${backend.api.url}")
   private String backendApiUrl;
 
+  @Value("${backend.api.key}")
+  private String backendApiKey;
+
   @Value("${backend.integrations.share-point.tenant-id}")
   private String sharePointTenantId;
 
@@ -30,6 +33,7 @@ public class RestClientConfig {
         .baseUrl(backendApiUrl)
         .requestFactory(factory)
         .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+        .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + backendApiKey)
         .build();
   }
 
