@@ -1,25 +1,50 @@
 package com.amaliai.mcp.servers.confluence;
 
+import com.amaliai.mcp.servers.confluence.service.ConfluenceService;
+import com.amaliai.mcp.servers.confluence.util.ConfluenceTokenManager;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.tool.annotation.Tool;
+import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Service;
 
-import java.time.OffsetDateTime;
 import java.util.UUID;
 
+/**
+ * MCP tool entrypoint for Confluence operations.
+ * <p>
+ * This class is intentionally thin: it resolves credentials and delegates
+ * every operation to {@link ConfluenceService}. All exception handling is
+ * managed centrally by {@link com.amaliai.mcp.config.McpToolExceptionHandler}.
+ */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ConfluenceServer {
-    // This is just an example and not indicative of the actual get documents implementation
-    @Tool(
-            description =
-                    "This tool gets all documents in user's share point and can be ordered by time range if specified")
-    public String getConfluenceDocuments(
-            OffsetDateTime startDate, OffsetDateTime endDate, int armsUserId, UUID integrationId) {
 
+    private final ConfluenceService confluenceService;
+    private final ConfluenceTokenManager tokenManager;
 
-        // Use access token to make requests to sharepoint.
+    // -------------------------------------------------------------------------
+    // MCP Tools
+    // -------------------------------------------------------------------------
 
-        return "";
+    @Tool(description = "Searches Confluence pages by keyword using CQL (Confluence Query Language). "
+            + "Returns a list of matching pages with their ID, title, type, space key, space name, "
+            + "URL, a short excerpt, and last-modified date. "
+            + "Optionally restrict the search to a specific space by providing its space key. "
+            + "Results are ordered by Confluence relevance score.")
+    public String searchConfluenceContent(
+            @ToolParam(description = "The ARMS user ID of the authenticated user") int armsUserId,
+            @ToolParam(description = "Keyword or phrase to search for in Confluence pages") String query,
+            @ToolParam(description = "Space key to restrict the search to a specific Confluence space (optional)",
+                    required = false) String spaceKey,
+            @ToolParam(description = "Maximum number of results to return (default 20, max 50)",
+                    required = false) Integer limit) {
+
+        UUID integrationId = tokenManager.resolveIntegrationId();
+        String token   = tokenManager.getAccessToken(armsUserId, integrationId);
+        String cloudId = tokenManager.getCloudId(armsUserId, integrationId);
+        return confluenceService.searchContent(token, cloudId, query, spaceKey, limit);
     }
 }
