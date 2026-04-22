@@ -47,6 +47,7 @@ public class ConfluenceGraphClient {
                     .uri(b -> b.path("/{cloudId}/wiki/rest/api/search")
                             .queryParam("cql", cql)
                             .queryParam("limit", limit)
+                            .queryParam("expand", "content.space")
                             .build(cloudId))
                     .header(HttpHeaders.AUTHORIZATION, BEARER_PREFIX + token)
                     .retrieve()
