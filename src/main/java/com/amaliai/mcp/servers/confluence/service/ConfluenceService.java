@@ -108,8 +108,9 @@ public class ConfluenceService {
      */
     private static String parseSearchResponse(String responseBody) {
         try {
-            JsonNode root = OBJECT_MAPPER.readTree(responseBody);
+            JsonNode root    = OBJECT_MAPPER.readTree(responseBody);
             JsonNode results = root.path("results");
+            String   baseUrl = root.path("_links").path("base").asText("");
             ArrayNode output = OBJECT_MAPPER.createArrayNode();
 
             for (JsonNode result : results) {
@@ -117,13 +118,16 @@ public class ConfluenceService {
                 JsonNode space   = content.path("space");
                 JsonNode links   = content.path("_links");
 
+                String webuiPath = links.path("webui").asText(null);
+                String fullUrl   = (webuiPath != null) ? baseUrl + webuiPath : null;
+
                 ObjectNode item = OBJECT_MAPPER.createObjectNode();
                 item.put("id",           content.path("id").asText(null));
                 item.put("title",        content.path("title").asText(null));
                 item.put("type",         content.path("type").asText(null));
                 item.put("spaceKey",     space.path("key").asText(null));
                 item.put("spaceName",    space.path("name").asText(null));
-                item.put("url",          links.path("webui").asText(null));
+                item.put("url",          fullUrl);
                 item.put("excerpt",      result.path("excerpt").asText(null));
                 item.put("lastModified", result.path("lastModified").asText(null));
                 output.add(item);
@@ -157,15 +161,19 @@ public class ConfluenceService {
      * }
      * </pre>
      */
-    static String parseV2SearchResponse(String responseBody) {
+    static String parseV2Response(String responseBody) {
         try {
-            JsonNode root = OBJECT_MAPPER.readTree(responseBody);
+            JsonNode root    = OBJECT_MAPPER.readTree(responseBody);
             JsonNode results = root.path("results");
+            String   baseUrl = root.path("_links").path("base").asText("");
             ArrayNode output = OBJECT_MAPPER.createArrayNode();
 
             for (JsonNode result : results) {
                 JsonNode content = result.path("content");
                 JsonNode links   = content.path("_links");
+
+                String webuiPath = links.path("webui").asText(null);
+                String fullUrl   = (webuiPath != null) ? baseUrl + webuiPath : null;
 
                 ObjectNode item = OBJECT_MAPPER.createObjectNode();
                 item.put("id",           content.path("id").asText(null));
@@ -173,7 +181,7 @@ public class ConfluenceService {
                 item.put("type",         content.path("type").asText(null));
                 item.put("spaceId",      content.path("spaceId").asText(null));
                 item.put("spaceName",    result.path("resultGlobalContainer").path("title").asText(null));
-                item.put("url",          links.path("webui").asText(null));
+                item.put("url",          fullUrl);
                 item.put("excerpt",      result.path("excerpt").asText(null));
                 item.put("lastModified", result.path("lastModified").asText(null));
                 output.add(item);
