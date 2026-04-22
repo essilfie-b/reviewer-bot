@@ -42,9 +42,54 @@ public class ConfluenceServer {
             @ToolParam(description = "Maximum number of results to return (default 20, max 50)",
                     required = false) Integer limit) {
 
-        UUID integrationId = tokenManager.resolveIntegrationId();
-        String token   = tokenManager.getAccessToken(armsUserId, integrationId);
-        String cloudId = tokenManager.getCloudId(armsUserId, integrationId);
-        return confluenceService.searchContent(token, cloudId, query, spaceKey, limit);
+        Credentials creds = resolveCredentials(armsUserId);
+        return confluenceService.searchContent(creds.token(), creds.cloudId(), query, spaceKey, limit);
     }
+
+    @Tool(description = "Retrieves metadata for a specific Confluence page by its ID. "
+            + "Returns the page ID, title, type, space key, parent page title, URL, and last-modified date. "
+            + "Does NOT return the page body content — use getConfluencePageContent for that. "
+            + "Use the 'id' field from searchConfluenceContent or listConfluencePages as the pageId.")
+    public String getConfluencePage(
+            @ToolParam(description = "The ARMS user ID of the authenticated user") int armsUserId,
+            @ToolParam(description = "The Confluence page ID to retrieve") String pageId) {
+
+        Credentials creds = resolveCredentials(armsUserId);
+        return confluenceService.getPage(creds.token(), creds.cloudId(), pageId);
+    }
+
+    @Tool(description = "Retrieves the full text content of a specific Confluence page by its ID. "
+            + "Returns page metadata (title, type, space, URL) plus the plain-text body content. "
+            + "HTML is stripped from the body. Content is truncated at 100,000 characters for very long pages. "
+            + "Use the 'id' field from searchConfluenceContent or listConfluencePages as the pageId.")
+    public String getConfluencePageContent(
+            @ToolParam(description = "The ARMS user ID of the authenticated user") int armsUserId,
+            @ToolParam(description = "The Confluence page ID whose content to retrieve") String pageId) {
+
+        Credentials creds = resolveCredentials(armsUserId);
+        return confluenceService.getPageContent(creds.token(), creds.cloudId(), pageId);
+    }
+
+    @Tool(description = "Lists pages in a specific Confluence space. "
+            + "Returns each page's ID, title, type, space key, space name, and URL. "
+            + "Does NOT return page content — use getConfluencePageContent to read a specific page. "
+            + "Use the space key visible in Confluence URLs (e.g. 'ENG', 'LMS', 'AED').")
+    public String listConfluencePages(
+            @ToolParam(description = "The ARMS user ID of the authenticated user") int armsUserId,
+            @ToolParam(description = "The Confluence space key to list pages from (e.g. 'ENG', 'LMS')") String spaceKey,
+            @ToolParam(description = "Maximum number of pages to return (default 20, max 50)",
+                    required = false) Integer limit) {
+
+        Credentials creds = resolveCredentials(armsUserId);
+        return confluenceService.listPages(creds.token(), creds.cloudId(), spaceKey, limit);
+    }
+
+    private Credentials resolveCredentials(int armsUserId) {
+        UUID integrationId = tokenManager.resolveIntegrationId();
+        return new Credentials(
+                tokenManager.getAccessToken(armsUserId, integrationId),
+                tokenManager.getCloudId(armsUserId, integrationId));
+    }
+
+    private record Credentials(String token, String cloudId) {}
 }
