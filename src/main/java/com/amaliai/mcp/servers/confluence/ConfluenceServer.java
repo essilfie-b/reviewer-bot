@@ -48,6 +48,20 @@ public class ConfluenceServer {
         return confluenceService.searchContent(token, cloudId, query, spaceKey, limit);
     }
 
+    @Tool(description = "Retrieves details for a single Confluence space by its ID. "
+            + "Returns the space's ID, key, name, type (global/personal/collaboration/knowledge_base), "
+            + "status (current/archived), author ID, creation timestamp, homepage ID, "
+            + "plain-text description, and web URL.")
+    public String getConfluenceSpace(
+            @ToolParam(description = "The ARMS user ID of the authenticated user") int armsUserId,
+            @ToolParam(description = "The numeric Confluence space ID to fetch") String spaceId) {
+
+        UUID integrationId = tokenManager.resolveIntegrationId();
+        String token   = tokenManager.getAccessToken(armsUserId, integrationId);
+        String cloudId = tokenManager.getCloudId(armsUserId, integrationId);
+        return confluenceService.getSpace(token, cloudId, spaceId);
+    }
+
     @Tool(description = "Retrieves the direct child pages of a Confluence page. "
             + "Returns each child page's ID, title, space ID, parent page ID, URL, and last-modified date. "
             + "Useful for navigating a page hierarchy or discovering sub-pages under a known parent.")

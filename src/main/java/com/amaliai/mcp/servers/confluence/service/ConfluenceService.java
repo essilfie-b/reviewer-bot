@@ -66,6 +66,27 @@ public class ConfluenceService {
     }
 
     /**
+     * Retrieves details of a single Confluence space by its ID.
+     *
+     * @param token   the user's Confluence access token
+     * @param cloudId the Atlassian cloud ID for the user's tenant
+     * @param spaceId the numeric Confluence space ID (must not be blank)
+     * @return JSON object string with fields: id, key, name, type, status,
+     *         authorId, createdAt, homepageId, description, url
+     * @throws IllegalArgumentException     if {@code spaceId} is blank
+     * @throws ConfluenceOperationException if the API response cannot be parsed
+     */
+    public String getSpace(String token, String cloudId, String spaceId) {
+        if (spaceId == null || spaceId.isBlank()) {
+            throw new IllegalArgumentException("spaceId must not be empty");
+        }
+        log.info("Confluence getSpace — cloudId={} spaceId={}", cloudId, spaceId);
+
+        String raw = confluenceClient.getSpace(token, cloudId, spaceId.trim());
+        return parseSpaceResponse(raw);
+    }
+
+    /**
      * Returns the attachments for a Confluence page as a trimmed JSON array.
      *
      * @param token   the user's Confluence access token
@@ -336,6 +357,52 @@ public class ConfluenceService {
             return OBJECT_MAPPER.writeValueAsString(output);
         } catch (JsonProcessingException e) {
             throw new ConfluenceOperationException("Failed to parse Confluence v2 response", e);
+        }
+    }
+
+    /**
+     * Parses the Confluence v2 {@code /wiki/api/v2/spaces/{id}} response body
+     * into a simplified JSON object containing only the fields useful to the LLM.
+     *
+     * <p>Expected v2 response shape (abridged):
+     * <pre>
+     * {
+     *   "id": "123",
+     *   "key": "DEV",
+     *   "name": "Developer Docs",
+     *   "type": "global",
+     *   "status": "current",
+     *   "authorId": "...",
+     *   "createdAt": "2024-01-01T00:00:00.000Z",
+     *   "homepageId": "456",
+     *   "description": {
+     *     "plain": { "value": "...", "representation": "plain" }
+     *   },
+     *   "_links": { "webui": "/spaces/DEV" }
+     * }
+     * </pre>
+     */
+    private static String parseSpaceResponse(String responseBody) {
+        try {
+            JsonNode root  = OBJECT_MAPPER.readTree(responseBody);
+            JsonNode links = root.path("_links");
+            JsonNode desc  = root.path("description").path("plain").path("value");
+
+            ObjectNode item = OBJECT_MAPPER.createObjectNode();
+            item.put("id",          root.path("id").asText(null));
+            item.put("key",         root.path("key").asText(null));
+            item.put("name",        root.path("name").asText(null));
+            item.put("type",        root.path("type").asText(null));
+            item.put("status",      root.path("status").asText(null));
+            item.put("authorId",    root.path("authorId").asText(null));
+            item.put("createdAt",   root.path("createdAt").asText(null));
+            item.put("homepageId",  root.path("homepageId").asText(null));
+            item.put("description", desc.asText(null));
+            item.put("url",         links.path("webui").asText(null));
+
+            return OBJECT_MAPPER.writeValueAsString(item);
+        } catch (JsonProcessingException e) {
+            throw new ConfluenceOperationException("Failed to parse Confluence space response", e);
         }
     }
 }
