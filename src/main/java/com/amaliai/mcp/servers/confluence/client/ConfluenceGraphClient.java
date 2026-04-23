@@ -181,4 +181,31 @@ public class ConfluenceGraphClient {
             throw new ConfluenceOperationException("Confluence API returned " + e.getStatusCode(), e);
         }
     }
+
+    /**
+     * Fetches details for a single Confluence space by its numeric ID.
+     *
+     * @param token   the user's Confluence access token
+     * @param cloudId the Atlassian cloud ID identifying the tenant
+     * @param spaceId the Confluence space ID
+     * @return raw JSON response body from {@code GET /wiki/api/v2/spaces/{id}}
+     */
+    public String getSpace(String token, String cloudId, String spaceId) {
+        log.debug("Confluence: GET /{}/wiki/api/v2/spaces/{}", cloudId, spaceId);
+        try {
+            return confluenceApiClient.get()
+                    .uri(b -> b.path("/{cloudId}/wiki/api/v2/spaces/{spaceId}")
+                            .queryParam("description-format", "plain")
+                            .build(cloudId, spaceId))
+                    .header(HttpHeaders.AUTHORIZATION, BEARER_PREFIX + token)
+                    .retrieve()
+                    .body(String.class);
+        } catch (HttpClientErrorException e) {
+            log.error("Confluence API error {} — response body: {}", e.getStatusCode(), e.getResponseBodyAsString());
+            if (e.getStatusCode().value() == 401 || e.getStatusCode().value() == 403) {
+                throw new ConfluenceAuthException("Confluence API returned " + e.getStatusCode(), e);
+            }
+            throw new ConfluenceOperationException("Confluence API returned " + e.getStatusCode(), e);
+        }
+    }
 }
