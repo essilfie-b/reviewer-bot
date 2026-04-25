@@ -60,4 +60,60 @@ public class ConfluenceGraphClient {
             throw new ConfluenceOperationException("Confluence API returned " + e.getStatusCode(), e);
         }
     }
+
+    /**
+     * Retrieves the direct child pages of a specific Confluence page.
+     *
+     * @param token   the user's Confluence access token
+     * @param cloudId the Atlassian cloud ID identifying the tenant
+     * @param pageId  the numeric page ID whose children to fetch
+     * @param limit   maximum number of child pages to return
+     * @return raw JSON response body from {@code GET /wiki/api/v2/pages/{pageId}/children}
+     */
+    public String getPageChildren(String token, String cloudId, String pageId, int limit) {
+        log.debug("Confluence: GET /{}/wiki/api/v2/pages/{}/children limit={}", cloudId, pageId, limit);
+        try {
+            return confluenceApiClient.get()
+                    .uri(b -> b.path("/{cloudId}/wiki/api/v2/pages/{pageId}/children")
+                            .queryParam("limit", limit)
+                            .build(cloudId, pageId))
+                    .header(HttpHeaders.AUTHORIZATION, BEARER_PREFIX + token)
+                    .retrieve()
+                    .body(String.class);
+        } catch (HttpClientErrorException e) {
+            log.error("Confluence API error {} — response body: {}", e.getStatusCode(), e.getResponseBodyAsString());
+            if (e.getStatusCode().value() == 401 || e.getStatusCode().value() == 403) {
+                throw new ConfluenceAuthException("Confluence API returned " + e.getStatusCode(), e);
+            }
+            throw new ConfluenceOperationException("Confluence API returned " + e.getStatusCode(), e);
+        }
+    }
+
+    /**
+     * Retrieves attachments for a specific Confluence page.
+     *
+     * @param token   the user's Confluence access token
+     * @param cloudId the Atlassian cloud ID identifying the tenant
+     * @param pageId  the numeric page ID
+     * @param limit   maximum number of attachments to return
+     * @return raw JSON response body from {@code GET /wiki/api/v2/pages/{pageId}/attachments}
+     */
+    public String getAttachments(String token, String cloudId, String pageId, int limit) {
+        log.debug("Confluence: GET /{}/wiki/api/v2/pages/{}/attachments limit={}", cloudId, pageId, limit);
+        try {
+            return confluenceApiClient.get()
+                    .uri(b -> b.path("/{cloudId}/wiki/api/v2/pages/{pageId}/attachments")
+                            .queryParam("limit", limit)
+                            .build(cloudId, pageId))
+                    .header(HttpHeaders.AUTHORIZATION, BEARER_PREFIX + token)
+                    .retrieve()
+                    .body(String.class);
+        } catch (HttpClientErrorException e) {
+            log.error("Confluence API error {} — response body: {}", e.getStatusCode(), e.getResponseBodyAsString());
+            if (e.getStatusCode().value() == 401 || e.getStatusCode().value() == 403) {
+                throw new ConfluenceAuthException("Confluence API returned " + e.getStatusCode(), e);
+            }
+            throw new ConfluenceOperationException("Confluence API returned " + e.getStatusCode(), e);
+        }
+    }
 }

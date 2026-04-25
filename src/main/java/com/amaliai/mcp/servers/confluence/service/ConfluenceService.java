@@ -65,6 +65,52 @@ public class ConfluenceService {
         return parseSearchResponse(raw);
     }
 
+    /**
+     * Returns the attachments for a Confluence page as a trimmed JSON array.
+     *
+     * @param token   the user's Confluence access token
+     * @param cloudId the Atlassian cloud ID for the user's tenant
+     * @param pageId  numeric ID of the page whose attachments to fetch (must not be blank)
+     * @param limit   maximum results; clamped to [{@value DEFAULT_LIMIT}, {@value MAX_LIMIT}]
+     * @return JSON array string with fields: id, title, type, mediaType, fileSize, pageId, url, downloadLink, lastModified
+     * @throws IllegalArgumentException     if {@code pageId} is blank
+     * @throws ConfluenceOperationException if the API response cannot be parsed
+     */
+    /**
+     * Returns the direct child pages of a Confluence page as a trimmed JSON array.
+     *
+     * @param token   the user's Confluence access token
+     * @param cloudId the Atlassian cloud ID for the user's tenant
+     * @param pageId  numeric ID of the parent page (must not be blank)
+     * @param limit   maximum results; clamped to [{@value DEFAULT_LIMIT}, {@value MAX_LIMIT}]
+     * @return JSON array string with fields: id, title, spaceId, parentId, url, lastModified
+     * @throws IllegalArgumentException     if {@code pageId} is blank
+     * @throws ConfluenceOperationException if the API response cannot be parsed
+     */
+    public String getPageChildren(String token, String cloudId, String pageId, Integer limit) {
+        if (pageId == null || pageId.isBlank()) {
+            throw new IllegalArgumentException("pageId must not be empty");
+        }
+
+        int effectiveLimit = (limit == null || limit <= 0) ? DEFAULT_LIMIT : Math.min(limit, MAX_LIMIT);
+        log.info("Confluence page children — cloudId={} pageId={} limit={}", cloudId, pageId, effectiveLimit);
+
+        String raw = confluenceClient.getPageChildren(token, cloudId, pageId, effectiveLimit);
+        return parsePageChildrenResponse(raw);
+    }
+
+    public String getAttachments(String token, String cloudId, String pageId, Integer limit) {
+        if (pageId == null || pageId.isBlank()) {
+            throw new IllegalArgumentException("pageId must not be empty");
+        }
+
+        int effectiveLimit = (limit == null || limit <= 0) ? DEFAULT_LIMIT : Math.min(limit, MAX_LIMIT);
+        log.info("Confluence attachments — cloudId={} pageId={} limit={}", cloudId, pageId, effectiveLimit);
+
+        String raw = confluenceClient.getAttachments(token, cloudId, pageId, effectiveLimit);
+        return parseAttachmentsResponse(raw);
+    }
+
     // -------------------------------------------------------------------------
     // Private helpers
     // -------------------------------------------------------------------------
@@ -136,6 +182,106 @@ public class ConfluenceService {
             return OBJECT_MAPPER.writeValueAsString(output);
         } catch (JsonProcessingException e) {
             throw new ConfluenceOperationException("Failed to parse Confluence search response", e);
+        }
+    }
+
+    /**
+     * Parses a Confluence v2 {@code /wiki/api/v2/pages/{id}/attachments} response body into a
+     * simplified JSON array.
+     *
+     * <p>Expected v2 response shape:
+     * <pre>
+     * {
+     *   "results": [
+     *     {
+     *       "id": "att123", "title": "file.pdf",
+     *       "mediaType": "application/pdf", "fileSize": 12345,
+     *       "webuiLink": "/wiki/download/attachments/...",
+     *       "downloadLink": "/wiki/download/attachments/...?api=v2",
+     *       "version": { "createdAt": "2024-01-01T00:00:00.000Z" },
+     *       "pageId": "456"
+     *     }
+     *   ],
+     *   "_links": { "base": "https://company.atlassian.net" }
+     * }
+     * </pre>
+     */
+    /**
+     * Parses a Confluence v2 {@code /wiki/api/v2/pages/{id}/children} response body into a
+     * simplified JSON array.
+     *
+     * <p>Expected v2 response shape:
+     * <pre>
+     * {
+     *   "results": [
+     *     {
+     *       "id": "...", "title": "...", "spaceId": "...", "parentId": "...",
+     *       "_links": { "webui": "/wiki/spaces/.../pages/..." },
+     *       "version": { "createdAt": "2024-01-01T00:00:00.000Z" }
+     *     }
+     *   ],
+     *   "_links": { "base": "https://company.atlassian.net" }
+     * }
+     * </pre>
+     */
+    private static String parsePageChildrenResponse(String responseBody) {
+        try {
+            JsonNode root    = OBJECT_MAPPER.readTree(responseBody);
+            JsonNode results = root.path("results");
+            String   baseUrl = root.path("_links").path("base").asText("");
+            ArrayNode output = OBJECT_MAPPER.createArrayNode();
+
+            for (JsonNode result : results) {
+                String id        = result.path("id").asText(null);
+                String webuiPath = result.path("_links").path("webui").asText(null);
+                String fullUrl   = (webuiPath != null && !webuiPath.isBlank())
+                        ? baseUrl + webuiPath
+                        : (id != null && !baseUrl.isBlank() ? baseUrl + "/wiki/pages/" + id : null);
+
+                ObjectNode item = OBJECT_MAPPER.createObjectNode();
+                item.put("id",           id);
+                item.put("title",        result.path("title").asText(null));
+                item.put("spaceId",      result.path("spaceId").asText(null));
+                item.put("parentId",     result.path("parentPageId").asText(null));
+                item.put("url",          fullUrl);
+                item.put("lastModified", result.path("version").path("createdAt").asText(null));
+                output.add(item);
+            }
+
+            return OBJECT_MAPPER.writeValueAsString(output);
+        } catch (JsonProcessingException e) {
+            throw new ConfluenceOperationException("Failed to parse Confluence page children response", e);
+        }
+    }
+
+    private static String parseAttachmentsResponse(String responseBody) {
+        try {
+            JsonNode root    = OBJECT_MAPPER.readTree(responseBody);
+            JsonNode results = root.path("results");
+            String   baseUrl = root.path("_links").path("base").asText("");
+            ArrayNode output = OBJECT_MAPPER.createArrayNode();
+
+            for (JsonNode result : results) {
+                String webuiLink   = result.path("webuiLink").asText(null);
+                String downloadLink = result.path("downloadLink").asText(null);
+                String fullUrl     = (webuiLink != null) ? baseUrl + webuiLink : null;
+
+                ObjectNode item = OBJECT_MAPPER.createObjectNode();
+                item.put("id",           result.path("id").asText(null));
+                item.put("title",        result.path("title").asText(null));
+                item.put("type",         "attachment");
+                item.put("mediaType",    result.path("mediaType").asText(null));
+                item.put("fileSize",     result.path("fileSize").asLong(0));
+                item.put("pageId",       result.path("pageId").asText(null));
+                item.put("url",          fullUrl);
+                item.put("downloadLink", downloadLink != null ? baseUrl + downloadLink : null);
+                item.put("lastModified", result.path("version").path("createdAt").asText(null));
+                output.add(item);
+            }
+
+            return OBJECT_MAPPER.writeValueAsString(output);
+        } catch (JsonProcessingException e) {
+            throw new ConfluenceOperationException("Failed to parse Confluence attachments response", e);
         }
     }
 
