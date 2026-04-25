@@ -68,6 +68,52 @@ public class ConfluenceService {
     }
 
     /**
+     * Returns the attachments for a Confluence page as a trimmed JSON array.
+     *
+     * @param token   the user's Confluence access token
+     * @param cloudId the Atlassian cloud ID for the user's tenant
+     * @param pageId  numeric ID of the page whose attachments to fetch (must not be blank)
+     * @param limit   maximum results; clamped to [{@value DEFAULT_LIMIT}, {@value MAX_LIMIT}]
+     * @return JSON array string with fields: id, title, type, mediaType, fileSize, pageId, url, downloadLink, lastModified
+     * @throws IllegalArgumentException     if {@code pageId} is blank
+     * @throws ConfluenceOperationException if the API response cannot be parsed
+     */
+    /**
+     * Returns the direct child pages of a Confluence page as a trimmed JSON array.
+     *
+     * @param token   the user's Confluence access token
+     * @param cloudId the Atlassian cloud ID for the user's tenant
+     * @param pageId  numeric ID of the parent page (must not be blank)
+     * @param limit   maximum results; clamped to [{@value DEFAULT_LIMIT}, {@value MAX_LIMIT}]
+     * @return JSON array string with fields: id, title, spaceId, parentId, url, lastModified
+     * @throws IllegalArgumentException     if {@code pageId} is blank
+     * @throws ConfluenceOperationException if the API response cannot be parsed
+     */
+    public String getPageChildren(String token, String cloudId, String pageId, Integer limit) {
+        if (pageId == null || pageId.isBlank()) {
+            throw new IllegalArgumentException("pageId must not be empty");
+        }
+
+        int effectiveLimit = (limit == null || limit <= 0) ? DEFAULT_LIMIT : Math.min(limit, MAX_LIMIT);
+        log.info("Confluence page children — cloudId={} pageId={} limit={}", cloudId, pageId, effectiveLimit);
+
+        String raw = confluenceClient.getPageChildren(token, cloudId, pageId, effectiveLimit);
+        return parsePageChildrenResponse(raw);
+    }
+
+    public String getAttachments(String token, String cloudId, String pageId, Integer limit) {
+        if (pageId == null || pageId.isBlank()) {
+            throw new IllegalArgumentException("pageId must not be empty");
+        }
+
+        int effectiveLimit = (limit == null || limit <= 0) ? DEFAULT_LIMIT : Math.min(limit, MAX_LIMIT);
+        log.info("Confluence attachments — cloudId={} pageId={} limit={}", cloudId, pageId, effectiveLimit);
+
+        String raw = confluenceClient.getAttachments(token, cloudId, pageId, effectiveLimit);
+        return parseAttachmentsResponse(raw);
+    }
+
+    /**
      * Retrieves details of a single Confluence space by its ID.
      *
      * @param token   the user's Confluence access token
