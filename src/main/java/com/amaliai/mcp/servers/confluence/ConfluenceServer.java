@@ -47,4 +47,34 @@ public class ConfluenceServer {
         String cloudId = tokenManager.getCloudId(armsUserId, integrationId);
         return confluenceService.searchContent(token, cloudId, query, spaceKey, limit);
     }
+
+    @Tool(description = "Retrieves the direct child pages of a Confluence page. "
+            + "Returns each child page's ID, title, space ID, parent page ID, URL, and last-modified date. "
+            + "Useful for navigating a page hierarchy or discovering sub-pages under a known parent.")
+    public String getConfluencePageChildren(
+            @ToolParam(description = "The ARMS user ID of the authenticated user") int armsUserId,
+            @ToolParam(description = "The numeric ID of the parent Confluence page") String pageId,
+            @ToolParam(description = "Maximum number of child pages to return (default 20, max 50)",
+                    required = false) Integer limit) {
+
+        UUID integrationId = tokenManager.resolveIntegrationId();
+        String token   = tokenManager.getAccessToken(armsUserId, integrationId);
+        String cloudId = tokenManager.getCloudId(armsUserId, integrationId);
+        return confluenceService.getPageChildren(token, cloudId, pageId, limit);
+    }
+
+    @Tool(description = "Retrieves the list of file attachments on a Confluence page. "
+            + "Returns each attachment's ID, title, media type, file size in bytes, "
+            + "the page it belongs to, a viewable URL, a direct download link, and last-modified date.")
+    public String getConfluenceAttachments(
+            @ToolParam(description = "The ARMS user ID of the authenticated user") int armsUserId,
+            @ToolParam(description = "The numeric ID of the Confluence page") String pageId,
+            @ToolParam(description = "Maximum number of attachments to return (default 20, max 50)",
+                    required = false) Integer limit) {
+
+        UUID integrationId = tokenManager.resolveIntegrationId();
+        String token   = tokenManager.getAccessToken(armsUserId, integrationId);
+        String cloudId = tokenManager.getCloudId(armsUserId, integrationId);
+        return confluenceService.getAttachments(token, cloudId, pageId, limit);
+    }
 }
