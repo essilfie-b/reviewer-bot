@@ -61,4 +61,27 @@ public class ConfluenceServer {
         String cloudId = tokenManager.getCloudId(armsUserId, integrationId);
         return confluenceService.getSpace(token, cloudId, spaceId);
     }
+
+    @Tool(description = "Lists Confluence spaces visible to the authenticated user. "
+            + "Returns a JSON object with a 'results' array (each entry containing id, key, name, "
+            + "type, status, authorId, createdAt, homepageId, description, url) and a 'nextCursor' "
+            + "string for pagination (null when there are no more pages). "
+            + "Optionally filter by space type (global|personal|collaboration|knowledge_base) "
+            + "and status (current|archived).")
+    public String listConfluenceSpaces(
+            @ToolParam(description = "The ARMS user ID of the authenticated user") int armsUserId,
+            @ToolParam(description = "Space type filter: global, personal, collaboration, or knowledge_base (optional)",
+                    required = false) String type,
+            @ToolParam(description = "Space status filter: current or archived (optional)",
+                    required = false) String status,
+            @ToolParam(description = "Maximum number of spaces to return (default 25, max 250)",
+                    required = false) Integer limit,
+            @ToolParam(description = "Opaque pagination cursor from a previous response's nextCursor (optional)",
+                    required = false) String cursor) {
+
+        UUID integrationId = tokenManager.resolveIntegrationId();
+        String token   = tokenManager.getAccessToken(armsUserId, integrationId);
+        String cloudId = tokenManager.getCloudId(armsUserId, integrationId);
+        return confluenceService.listSpaces(token, cloudId, type, status, limit, cursor);
+    }
 }
