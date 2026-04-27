@@ -123,11 +123,7 @@ public class ConfluenceGraphClient {
     /** Attaches the bearer token, executes the request, and maps HTTP errors to domain exceptions. */
     private String fetch(RestClient.RequestHeadersSpec<?> request, String token) {
         try {
-            return confluenceApiClient.get()
-                    .uri(b -> b.path("/{cloudId}/wiki/rest/api/search")
-                            .queryParam("cql", cql)
-                            .queryParam("limit", limit)
-                            .build(cloudId))
+            return request
                     .header(HttpHeaders.AUTHORIZATION, BEARER_PREFIX + token)
                     .retrieve()
                     .body(String.class);

@@ -163,6 +163,8 @@ public class ConfluenceService {
         return parsePagesListResponse(
                 confluenceClient.listPagesBySpaceId(token, cloudId, space.id(), effectiveLimit),
                 space.key(), space.name());
+    }
+    /*
      * Retrieves details of a single Confluence space by its ID.
      *
      * @param token   the user's Confluence access token
@@ -459,12 +461,56 @@ public class ConfluenceService {
             throw new ConfluenceOperationException("Failed to parse Confluence space response", e);
         }
     }
+
+    /**
+     * Parses a Confluence v2 content-list response (e.g. {@code /wiki/api/v2/pages},
+     * {@code /wiki/api/v2/spaces/{id}/pages}) into a simplified JSON array.
+     *
+     * <p>Expected v2 response shape:
+     * <pre>
+     * {
+     *   "results": [
+     *     {
+     *       "content": {
+     *         "id": "...", "type": "page", "title": "...",
+     *         "spaceId": "...",
+     *         "_links": { "webui": "..." }
+     *       },
+     *       "resultGlobalContainer": { "title": "Space Name", "displayUrl": "..." },
+     *       "excerpt": "...",
+     *       "lastModified": "2024-01-01T00:00:00.000Z"
+     *     }
+     *   ]
+     * }
+     * </pre>
+     */
     static String parseV2SearchResponse(String responseBody) {
         try {
             JsonNode root = OBJECT_MAPPER.readTree(responseBody);
             JsonNode results = root.path("results");
             ArrayNode output = OBJECT_MAPPER.createArrayNode();
 
+            for (JsonNode result : results) {
+                JsonNode content = result.path("content");
+                JsonNode links   = content.path("_links");
+
+                ObjectNode item = OBJECT_MAPPER.createObjectNode();
+                item.put("id",           content.path("id").asText(null));
+                item.put("title",        content.path("title").asText(null));
+                item.put("type",         content.path("type").asText(null));
+                item.put("spaceId",      content.path("spaceId").asText(null));
+                item.put("spaceName",    result.path("resultGlobalContainer").path("title").asText(null));
+                item.put("url",          links.path("webui").asText(null));
+                item.put("excerpt",      result.path("excerpt").asText(null));
+                item.put("lastModified", result.path("lastModified").asText(null));
+                output.add(item);
+            }
+
+            return OBJECT_MAPPER.writeValueAsString(output);
+        } catch (JsonProcessingException e) {
+            throw new ConfluenceOperationException("Failed to parse Confluence v2 response", e);
+        }
+    }
     /**
      * Builds a consistent JSON object for a single v2 page.
      * <p>
@@ -560,16 +606,6 @@ public class ConfluenceService {
 
             for (JsonNode page : root.path(FIELD_RESULTS)) {
                 output.add(buildV2PageNode(page, spaceKey, spaceName, baseUrl));
-                ObjectNode item = OBJECT_MAPPER.createObjectNode();
-                item.put("id",           content.path("id").asText(null));
-                item.put("title",        content.path("title").asText(null));
-                item.put("type",         content.path("type").asText(null));
-                item.put("spaceId",      content.path("spaceId").asText(null));
-                item.put("spaceName",    result.path("resultGlobalContainer").path("title").asText(null));
-                item.put("url",          links.path("webui").asText(null));
-                item.put("excerpt",      result.path("excerpt").asText(null));
-                item.put("lastModified", result.path("lastModified").asText(null));
-                output.add(item);
             }
 
             return OBJECT_MAPPER.writeValueAsString(output);
@@ -577,6 +613,7 @@ public class ConfluenceService {
             throw new ConfluenceOperationException("Failed to parse Confluence pages list response", e);
         }
     }
+
 
     /**
      * Strips HTML tags and decodes common HTML entities from a Confluence
@@ -597,7 +634,7 @@ public class ConfluenceService {
     }
 
     private record SpaceInfo(String id, String key, String name) {}
-
+    /*
      * Parses the Confluence v2 {@code /wiki/api/v2/spaces/{id}} response body
      * into a simplified JSON object containing only the fields useful to the LLM.
      *
@@ -706,3 +743,4 @@ public class ConfluenceService {
         return null;
     }
 }
+
