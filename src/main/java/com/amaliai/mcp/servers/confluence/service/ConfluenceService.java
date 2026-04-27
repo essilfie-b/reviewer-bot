@@ -31,6 +31,8 @@ public class ConfluenceService {
     private static final int DEFAULT_LIMIT = 20;
     private static final int MAX_LIMIT = 50;
     private static final int MAX_QUERY_LENGTH = 1_000;
+    private static final int DEFAULT_SPACES_LIMIT = 25;
+    private static final int MAX_SPACES_LIMIT = 250;
 
     private final ConfluenceGraphClient confluenceClient;
 
@@ -84,6 +86,34 @@ public class ConfluenceService {
 
         String raw = confluenceClient.getSpace(token, cloudId, spaceId.trim());
         return parseSpaceResponse(raw);
+    }
+
+    /**
+     * Lists Confluence spaces for the tenant with optional type/status filters
+     * and cursor-based pagination.
+     *
+     * @param token   the user's Confluence access token
+     * @param cloudId the Atlassian cloud ID for the user's tenant
+     * @param type    optional space type: global|personal|collaboration|knowledge_base
+     * @param status  optional space status: current|archived
+     * @param limit   maximum spaces; clamped to [{@value DEFAULT_SPACES_LIMIT}, {@value MAX_SPACES_LIMIT}]
+     * @param cursor  optional opaque pagination cursor from a previous call
+     * @return JSON object string with {@code results} (array of spaces) and {@code nextCursor}
+     * @throws ConfluenceOperationException if the API response cannot be parsed
+     */
+    public String listSpaces(String token, String cloudId,
+                             String type, String status, Integer limit, String cursor) {
+        int effectiveLimit = (limit == null || limit <= 0)
+                ? DEFAULT_SPACES_LIMIT
+                : Math.min(limit, MAX_SPACES_LIMIT);
+
+        log.info("Confluence listSpaces — cloudId={} type={} status={} limit={} cursor={} token={}",
+                cloudId, type, status, effectiveLimit, cursor, token);
+
+        String raw = confluenceClient.listSpaces(token, cloudId, type, status, effectiveLimit, cursor);
+
+        String res =  parseSpacesListResponse(raw);
+        return res;
     }
 
     /**
@@ -387,6 +417,8 @@ public class ConfluenceService {
             JsonNode root  = OBJECT_MAPPER.readTree(responseBody);
             JsonNode links = root.path("_links");
             JsonNode desc  = root.path("description").path("plain").path("value");
+            JsonNode excerpt = root.path("excerpt");
+            JsonNode resultGlobalContainer = root.path("resultGlobalContainer");
 
             ObjectNode item = OBJECT_MAPPER.createObjectNode();
             item.put("id",          root.path("id").asText(null));
@@ -398,11 +430,72 @@ public class ConfluenceService {
             item.put("createdAt",   root.path("createdAt").asText(null));
             item.put("homepageId",  root.path("homepageId").asText(null));
             item.put("description", desc.asText(null));
+            item.put("excerpt",     excerpt.asText(null));
+            item.set("resultGlobalContainer", resultGlobalContainer.isMissingNode() ? null : resultGlobalContainer);
             item.put("url",         links.path("webui").asText(null));
 
             return OBJECT_MAPPER.writeValueAsString(item);
         } catch (JsonProcessingException e) {
             throw new ConfluenceOperationException("Failed to parse Confluence space response", e);
         }
+    }
+
+    /**
+     * Parses the Confluence v2 {@code /wiki/api/v2/spaces} response body into a
+     * simplified JSON object:
+     * <pre>
+     * { "results": [ {id, key, name, type, status, authorId, createdAt, homepageId, description, url}, ... ],
+     *   "nextCursor": "..." | null }
+     * </pre>
+     */
+    private static String parseSpacesListResponse(String responseBody) {
+        try {
+            JsonNode root = OBJECT_MAPPER.readTree(responseBody);
+            JsonNode results = root.path("results");
+            ArrayNode arr = OBJECT_MAPPER.createArrayNode();
+
+            for (JsonNode space : results) {
+                JsonNode links = space.path("_links");
+                JsonNode resultGlobalContainer = space.path("resultGlobalContainer");
+
+                ObjectNode item = OBJECT_MAPPER.createObjectNode();
+                item.put("id",          space.path("id").asText(null));
+                item.put("key",         space.path("key").asText(null));
+                item.put("name",        space.path("name").asText(null));
+                item.put("type",        space.path("type").asText(null));
+                item.put("status",      space.path("status").asText(null));
+                item.set("resultGlobalContainer", resultGlobalContainer.isMissingNode() ? null : resultGlobalContainer);
+                item.put("url",         links.path("webui").asText(null));
+                arr.add(item);
+            }
+
+            ObjectNode out = OBJECT_MAPPER.createObjectNode();
+            out.set("results", arr);
+            String nextLink = root.path("_links").path("next").asText(null);
+            out.put("nextCursor", extractCursor(nextLink));
+
+            return OBJECT_MAPPER.writeValueAsString(out);
+        } catch (JsonProcessingException e) {
+            throw new ConfluenceOperationException("Failed to parse Confluence spaces list response", e);
+        }
+    }
+
+    /**
+     * Extracts the opaque {@code cursor} query parameter from a Confluence
+     * {@code _links.next} URL. Returns {@code null} if the link is absent or
+     * does not contain a cursor.
+     */
+    private static String extractCursor(String nextLink) {
+        if (nextLink == null || nextLink.isBlank()) return null;
+        int q = nextLink.indexOf('?');
+        if (q < 0) return null;
+        for (String pair : nextLink.substring(q + 1).split("&")) {
+            int eq = pair.indexOf('=');
+            if (eq > 0 && "cursor".equals(pair.substring(0, eq))) {
+                return java.net.URLDecoder.decode(
+                        pair.substring(eq + 1), java.nio.charset.StandardCharsets.UTF_8);
+            }
+        }
+        return null;
     }
 }
