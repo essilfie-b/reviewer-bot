@@ -1,6 +1,7 @@
 package com.amaliai.mcp.servers.confluence;
 
 import com.amaliai.mcp.servers.confluence.service.ConfluenceService;
+import com.amaliai.mcp.servers.confluence.util.ConfluenceServerHelper;
 import com.amaliai.mcp.servers.confluence.util.ConfluenceTokenManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,7 +43,7 @@ public class ConfluenceServer {
             @ToolParam(description = "Maximum number of results to return (default 20, max 50)",
                     required = false) Integer limit) {
 
-        Credentials creds = resolveCredentials(armsUserId);
+        ConfluenceServerHelper.Credentials creds = ConfluenceServerHelper.resolveCredentials(armsUserId, tokenManager);
         return confluenceService.searchContent(creds.token(), creds.cloudId(), query, spaceKey, limit);
     }
 
@@ -54,7 +55,7 @@ public class ConfluenceServer {
             @ToolParam(description = "The ARMS user ID of the authenticated user") int armsUserId,
             @ToolParam(description = "The Confluence page ID to retrieve") String pageId) {
 
-        Credentials creds = resolveCredentials(armsUserId);
+        ConfluenceServerHelper.Credentials creds = ConfluenceServerHelper.resolveCredentials(armsUserId, tokenManager);
         return confluenceService.getPage(creds.token(), creds.cloudId(), pageId);
     }
 
@@ -66,7 +67,7 @@ public class ConfluenceServer {
             @ToolParam(description = "The ARMS user ID of the authenticated user") int armsUserId,
             @ToolParam(description = "The Confluence page ID whose content to retrieve") String pageId) {
 
-        Credentials creds = resolveCredentials(armsUserId);
+        ConfluenceServerHelper.Credentials creds = ConfluenceServerHelper.resolveCredentials(armsUserId, tokenManager);
         return confluenceService.getPageContent(creds.token(), creds.cloudId(), pageId);
     }
 
@@ -80,18 +81,10 @@ public class ConfluenceServer {
             @ToolParam(description = "Maximum number of pages to return (default 20, max 50)",
                     required = false) Integer limit) {
 
-        Credentials creds = resolveCredentials(armsUserId);
+        ConfluenceServerHelper.Credentials creds = ConfluenceServerHelper.resolveCredentials(armsUserId, tokenManager);
         return confluenceService.listPages(creds.token(), creds.cloudId(), spaceKey, limit);
     }
 
-    private Credentials resolveCredentials(int armsUserId) {
-        UUID integrationId = tokenManager.resolveIntegrationId();
-        return new Credentials(
-                tokenManager.getAccessToken(armsUserId, integrationId),
-                tokenManager.getCloudId(armsUserId, integrationId));
-    }
-
-    private record Credentials(String token, String cloudId) {}
     @Tool(description = "Retrieves details for a single Confluence space by its ID. "
             + "Returns the space's ID, key, name, type (global/personal/collaboration/knowledge_base), "
             + "status (current/archived), author ID, creation timestamp, homepage ID, "
