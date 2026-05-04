@@ -1,5 +1,7 @@
 package com.amaliai.mcp.config;
 
+import com.amaliai.mcp.servers.confluence.exception.ConfluenceAuthException;
+import com.amaliai.mcp.servers.confluence.exception.ConfluenceOperationException;
 import com.amaliai.mcp.servers.sharepoint.exception.AuthenticationException;
 import com.amaliai.mcp.servers.sharepoint.exception.SharePointOperationException;
 import com.amaliai.mcp.servers.sharepoint.util.SharePointResponseUtil;
@@ -55,6 +57,12 @@ public class McpToolExceptionHandler {
             return responseUtil.errorResponse(toolName, e.getMessage());
         } catch (SharePointOperationException e) {
             log.error("Operation failed in tool '{}'", toolName, e);
+            return responseUtil.errorResponse(toolName, MSG_INTERNAL_ERR);
+        } catch (ConfluenceAuthException e) {
+            log.error("Confluence authentication failed in tool '{}'", toolName, e);
+            return responseUtil.errorResponse(toolName, MSG_AUTH_FAILED);
+        } catch (ConfluenceOperationException e) {
+            log.error("Confluence operation failed in tool '{}'", toolName, e);
             return responseUtil.errorResponse(toolName, MSG_INTERNAL_ERR);
         } catch (Throwable e) {
             log.error("Unexpected error in tool '{}'", toolName, e);
