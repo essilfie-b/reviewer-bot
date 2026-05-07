@@ -326,19 +326,23 @@ class ConfluenceServiceTest {
         @ParameterizedTest
         @NullSource
         @ValueSource(strings = {"", "  "})
-        void getSpace_blankSpaceId_throwsIllegalArgument(String spaceId) {
-            assertThatThrownBy(() -> service.getSpace(TOKEN, CLOUD_ID, spaceId))
+        void getSpace_blankSpaceKey_throwsIllegalArgument(String spaceKey) {
+            assertThatThrownBy(() -> service.getSpace(TOKEN, CLOUD_ID, spaceKey))
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("spaceId must not be empty");
+                    .hasMessageContaining("spaceKey must not be empty");
         }
 
         @Test
-        void getSpace_validSpaceId_trimmedAndDelegated() {
+        void getSpace_validSpaceKey_resolvesSpaceIdThenFetchesDetails() {
+            SpaceInfo spaceInfo = new SpaceInfo("99", "ENG", "Engineering");
+            when(confluenceClient.getSpaceByKey(TOKEN, CLOUD_ID, "ENG")).thenReturn(RAW);
+            utilMock.when(() -> ConfluenceServiceUtil.parseSpaceResult(RAW, "ENG")).thenReturn(spaceInfo);
             when(confluenceClient.getSpace(TOKEN, CLOUD_ID, "99")).thenReturn(RAW);
             utilMock.when(() -> ConfluenceServiceUtil.parseSpaceResponse(RAW)).thenReturn(PARSED);
 
             // Pass with surrounding whitespace to verify trim()
-            assertThat(service.getSpace(TOKEN, CLOUD_ID, "  99  ")).isEqualTo(PARSED);
+            assertThat(service.getSpace(TOKEN, CLOUD_ID, "  ENG  ")).isEqualTo(PARSED);
+            verify(confluenceClient).getSpaceByKey(TOKEN, CLOUD_ID, "ENG");
             verify(confluenceClient).getSpace(TOKEN, CLOUD_ID, "99");
         }
     }
