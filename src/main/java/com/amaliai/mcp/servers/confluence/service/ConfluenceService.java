@@ -132,23 +132,31 @@ public class ConfluenceService {
                 space.key(), space.name());
     }
     /**
-     * Retrieves details of a single Confluence space by its ID.
+     * Retrieves details of a single Confluence space by its key.
      *
-     * @param token   the user's Confluence access token
-     * @param cloudId the Atlassian cloud ID for the user's tenant
-     * @param spaceId the numeric Confluence space ID (must not be blank)
+     * <p>Resolution is two-step:
+     * 1) resolve {@code spaceKey} to a numeric space ID, 2) fetch full space details by ID.
+     *
+     * @param token    the user's Confluence access token
+     * @param cloudId  the Atlassian cloud ID for the user's tenant
+     * @param spaceKey the human-readable Confluence space key (must not be blank)
      * @return JSON object string with fields: id, key, name, type, status,
      *         authorId, createdAt, homepageId, description, url
-     * @throws IllegalArgumentException     if {@code spaceId} is blank
-     * @throws ConfluenceOperationException if the API response cannot be parsed
+     * @throws IllegalArgumentException     if {@code spaceKey} is blank
+     * @throws ConfluenceOperationException if the space is not found or the API response cannot be parsed
      */
-    public String getSpace(String token, String cloudId, String spaceId) {
-        if (spaceId == null || spaceId.isBlank()) {
-            throw new IllegalArgumentException("spaceId must not be empty");
+    public String getSpace(String token, String cloudId, String spaceKey) {
+        if (spaceKey == null || spaceKey.isBlank()) {
+            throw new IllegalArgumentException("spaceKey must not be empty");
         }
-        log.info("Confluence getSpace — cloudId={} spaceId={}", cloudId, spaceId);
 
-        String raw = confluenceClient.getSpace(token, cloudId, spaceId.trim());
+        String normalizedSpaceKey = spaceKey.trim();
+        log.info("Confluence getSpace — cloudId={} spaceKey={}", cloudId, normalizedSpaceKey);
+
+        SpaceInfo space = ConfluenceServiceUtil.parseSpaceResult(
+                confluenceClient.getSpaceByKey(token, cloudId, normalizedSpaceKey), normalizedSpaceKey);
+
+        String raw = confluenceClient.getSpace(token, cloudId, space.id());
         return ConfluenceServiceUtil.parseSpaceResponse(raw);
     }
 

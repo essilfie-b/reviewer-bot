@@ -168,15 +168,15 @@ class ConfluenceServerTest {
         @Test
         void getConfluenceSpace_delegatesCorrectly() {
             stubTokenManager();
-            when(confluenceService.getSpace(TOKEN, CLOUD_ID, "space-99")).thenReturn(RESULT);
+            when(confluenceService.getSpace(TOKEN, CLOUD_ID, "ENG")).thenReturn(RESULT);
 
-            String result = confluenceServer.getConfluenceSpace(ARMS_USER_ID, "space-99");
+            String result = confluenceServer.getConfluenceSpace(ARMS_USER_ID, "ENG");
 
             assertThat(result).isEqualTo(RESULT);
             verify(tokenManager).resolveIntegrationId();
             verify(tokenManager).getAccessToken(ARMS_USER_ID, INTEGRATION_ID);
             verify(tokenManager).getCloudId(ARMS_USER_ID, INTEGRATION_ID);
-            verify(confluenceService).getSpace(TOKEN, CLOUD_ID, "space-99");
+            verify(confluenceService).getSpace(TOKEN, CLOUD_ID, "ENG");
         }
 
         // --- listConfluenceSpaces ---
