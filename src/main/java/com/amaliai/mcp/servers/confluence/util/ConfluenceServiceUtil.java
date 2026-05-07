@@ -450,7 +450,10 @@ public class ConfluenceServiceUtil {
             item.put(FIELD_DESCRIPTION, desc.asText(null));
             item.put(FIELD_EXCERPT,     excerpt.asText(null));
             item.set("resultGlobalContainer", resultGlobalContainer.isMissingNode() ? null : resultGlobalContainer);
-            item.put(FIELD_URL,         links.path(FIELD_WEBUI).asText(null));
+            String webui   = links.path(FIELD_WEBUI).asText(null);
+            String base    = links.path(FIELD_BASE).asText(null);
+            String fullUrl = (base != null && webui != null) ? base + webui : webui;
+            item.put(FIELD_URL, fullUrl);
 
             return OBJECT_MAPPER.writeValueAsString(item);
         } catch (JsonProcessingException e) {
@@ -468,22 +471,26 @@ public class ConfluenceServiceUtil {
      */
     public static String parseSpacesListResponse(String responseBody) {
         try {
-            JsonNode root = OBJECT_MAPPER.readTree(responseBody);
+            JsonNode root    = OBJECT_MAPPER.readTree(responseBody);
             JsonNode results = root.path(FIELD_RESULTS);
-            ArrayNode arr = OBJECT_MAPPER.createArrayNode();
+            String   baseUrl = root.path(FIELD_LINKS).path(FIELD_BASE).asText(null);
+            ArrayNode arr    = OBJECT_MAPPER.createArrayNode();
 
             for (JsonNode space : results) {
-                JsonNode links = space.path(FIELD_LINKS);
+                JsonNode links  = space.path(FIELD_LINKS);
                 JsonNode resultGlobalContainer = space.path("resultGlobalContainer");
 
+                String webui   = links.path(FIELD_WEBUI).asText(null);
+                String fullUrl = (baseUrl != null && webui != null) ? baseUrl + webui : webui;
+
                 ObjectNode item = OBJECT_MAPPER.createObjectNode();
-                item.put(FIELD_ID,          space.path(FIELD_ID).asText(null));
-                item.put(FIELD_KEY,         space.path(FIELD_KEY).asText(null));
-                item.put(FIELD_NAME,        space.path(FIELD_NAME).asText(null));
-                item.put(FIELD_TYPE,        space.path(FIELD_TYPE).asText(null));
-                item.put(FIELD_STATUS,      space.path(FIELD_STATUS).asText(null));
+                item.put(FIELD_ID,     space.path(FIELD_ID).asText(null));
+                item.put(FIELD_KEY,    space.path(FIELD_KEY).asText(null));
+                item.put(FIELD_NAME,   space.path(FIELD_NAME).asText(null));
+                item.put(FIELD_TYPE,   space.path(FIELD_TYPE).asText(null));
+                item.put(FIELD_STATUS, space.path(FIELD_STATUS).asText(null));
                 item.set("resultGlobalContainer", resultGlobalContainer.isMissingNode() ? null : resultGlobalContainer);
-                item.put(FIELD_URL,         links.path(FIELD_WEBUI).asText(null));
+                item.put(FIELD_URL,    fullUrl);
                 arr.add(item);
             }
 
