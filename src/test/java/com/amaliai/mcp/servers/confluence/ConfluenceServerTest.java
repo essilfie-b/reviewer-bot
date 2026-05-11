@@ -121,19 +121,19 @@ class ConfluenceServerTest {
 
         @Test
         void listConfluencePages_withLimit_delegatesCorrectly() {
-            when(confluenceService.listPages(TOKEN, CLOUD_ID, "ENG", 25)).thenReturn(RESULT);
+            when(confluenceService.listPages(TOKEN, CLOUD_ID, "ENG", 25, null)).thenReturn(RESULT);
 
-            String result = confluenceServer.listConfluencePages(ARMS_USER_ID, "ENG", 25);
+            String result = confluenceServer.listConfluencePages(ARMS_USER_ID, "ENG", 25, null);
 
             assertThat(result).isEqualTo(RESULT);
-            verify(confluenceService).listPages(TOKEN, CLOUD_ID, "ENG", 25);
+            verify(confluenceService).listPages(TOKEN, CLOUD_ID, "ENG", 25, null);
         }
 
         @Test
         void listConfluencePages_withNullLimit_delegatesNullThrough() {
-            when(confluenceService.listPages(TOKEN, CLOUD_ID, "ENG", null)).thenReturn(RESULT);
+            when(confluenceService.listPages(TOKEN, CLOUD_ID, "ENG", null, null)).thenReturn(RESULT);
 
-            String result = confluenceServer.listConfluencePages(ARMS_USER_ID, "ENG", null);
+            String result = confluenceServer.listConfluencePages(ARMS_USER_ID, "ENG", null, null);
 
             assertThat(result).isEqualTo(RESULT);
         }
@@ -187,19 +187,19 @@ class ConfluenceServerTest {
 
         @Test
         void getConfluencePageChildren_withLimit_delegatesCorrectly() {
-            when(confluenceService.getPageChildren(TOKEN, CLOUD_ID, "page-3", 15)).thenReturn(RESULT);
+            when(confluenceService.getPageChildren(TOKEN, CLOUD_ID, "page-3", 15, null)).thenReturn(RESULT);
 
-            String result = confluenceServer.getConfluencePageChildren(ARMS_USER_ID, "page-3", 15);
+            String result = confluenceServer.getConfluencePageChildren(ARMS_USER_ID, "page-3", 15, null);
 
             assertThat(result).isEqualTo(RESULT);
-            verify(confluenceService).getPageChildren(TOKEN, CLOUD_ID, "page-3", 15);
+            verify(confluenceService).getPageChildren(TOKEN, CLOUD_ID, "page-3", 15, null);
         }
 
         @Test
         void getConfluencePageChildren_withNullLimit_delegatesNullThrough() {
-            when(confluenceService.getPageChildren(TOKEN, CLOUD_ID, "page-3", null)).thenReturn(RESULT);
+            when(confluenceService.getPageChildren(TOKEN, CLOUD_ID, "page-3", null, null)).thenReturn(RESULT);
 
-            String result = confluenceServer.getConfluencePageChildren(ARMS_USER_ID, "page-3", null);
+            String result = confluenceServer.getConfluencePageChildren(ARMS_USER_ID, "page-3", null, null);
 
             assertThat(result).isEqualTo(RESULT);
         }
@@ -208,19 +208,19 @@ class ConfluenceServerTest {
 
         @Test
         void getConfluenceAttachments_withLimit_delegatesCorrectly() {
-            when(confluenceService.getAttachments(TOKEN, CLOUD_ID, "page-4", 5)).thenReturn(RESULT);
+            when(confluenceService.getAttachments(TOKEN, CLOUD_ID, "page-4", 5, null)).thenReturn(RESULT);
 
-            String result = confluenceServer.getConfluenceAttachments(ARMS_USER_ID, "page-4", 5);
+            String result = confluenceServer.getConfluenceAttachments(ARMS_USER_ID, "page-4", 5, null);
 
             assertThat(result).isEqualTo(RESULT);
-            verify(confluenceService).getAttachments(TOKEN, CLOUD_ID, "page-4", 5);
+            verify(confluenceService).getAttachments(TOKEN, CLOUD_ID, "page-4", 5, null);
         }
 
         @Test
         void getConfluenceAttachments_withNullLimit_delegatesNullThrough() {
-            when(confluenceService.getAttachments(TOKEN, CLOUD_ID, "page-4", null)).thenReturn(RESULT);
+            when(confluenceService.getAttachments(TOKEN, CLOUD_ID, "page-4", null, null)).thenReturn(RESULT);
 
-            String result = confluenceServer.getConfluenceAttachments(ARMS_USER_ID, "page-4", null);
+            String result = confluenceServer.getConfluenceAttachments(ARMS_USER_ID, "page-4", null, null);
 
             assertThat(result).isEqualTo(RESULT);
         }
