@@ -152,7 +152,7 @@ class ConfluenceServerTest {
         void getConfluenceSpace_delegatesCorrectly() {
             when(confluenceService.getSpace(TOKEN, CLOUD_ID, "space-99")).thenReturn(RESULT);
 
-            String result = confluenceServer.getConfluenceSpace(ARMS_USER_ID, "space-99");
+            String result = confluenceServer.getConfluenceSpace(ARMS_USER_ID, "ENG");
 
             assertThat(result).isEqualTo(RESULT);
             verify(confluenceService).getSpace(TOKEN, CLOUD_ID, "space-99");

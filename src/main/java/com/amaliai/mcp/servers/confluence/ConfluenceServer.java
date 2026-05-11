@@ -83,13 +83,13 @@ public class ConfluenceServer {
         return confluenceService.listPages(creds.token(), creds.cloudId(), spaceKey, limit);
     }
 
-    @Tool(description = "Retrieves details for a single Confluence space by its ID. "
+    @Tool(description = "Retrieves details for a single Confluence space by its key. "
             + "Returns the space's ID, key, name, type (global/personal/collaboration/knowledge_base), "
             + "status (current/archived), author ID, creation timestamp, homepage ID, "
             + "plain-text description, and web URL.")
     public String getConfluenceSpace(
             @ToolParam(description = "The ARMS user ID of the authenticated user") int armsUserId,
-            @ToolParam(description = "The numeric Confluence space ID to fetch") String spaceId) {
+            @ToolParam(description = "The Confluence space key to fetch (e.g. 'ENG', 'LMS')") String spaceKey) {
 
         ConfluenceServerHelper.Credentials creds = ConfluenceServerHelper.resolveCredentials(armsUserId, tokenManager);
         return confluenceService.getSpace(creds.token(), creds.cloudId(), spaceId);
