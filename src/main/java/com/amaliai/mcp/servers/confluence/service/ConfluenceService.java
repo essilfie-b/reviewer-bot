@@ -4,10 +4,15 @@ import com.amaliai.mcp.servers.confluence.client.ConfluenceGraphClient;
 import com.amaliai.mcp.servers.confluence.dto.SpaceInfo;
 import com.amaliai.mcp.servers.confluence.exception.ConfluenceOperationException;
 import com.amaliai.mcp.servers.confluence.util.ConfluenceServiceUtil;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+
+import java.time.Duration;
+import java.util.Locale;
 
 
 /**
@@ -32,8 +37,13 @@ public class ConfluenceService {
     private static final int MAX_QUERY_LENGTH = 1_000;
     private static final int DEFAULT_SPACES_LIMIT = 25;
     private static final int MAX_SPACES_LIMIT = 250;
+    private static final Duration SPACE_INFO_CACHE_TTL = Duration.ofHours(24);
 
     private final ConfluenceGraphClient confluenceClient;
+    private final Cache<String, SpaceInfo> spaceInfoCache = Caffeine.newBuilder()
+            .expireAfterWrite(SPACE_INFO_CACHE_TTL)
+            .maximumSize(1_000)
+            .build();
 
     /**
      * Searches Confluence pages by keyword using CQL and returns a trimmed JSON
@@ -121,11 +131,17 @@ public class ConfluenceService {
         if (spaceKey == null || spaceKey.isBlank()) {
             throw new IllegalArgumentException("spaceKey must not be empty");
         }
-        int effectiveLimit = (limit == null || limit <= 0) ? DEFAULT_LIMIT : Math.min(limit, MAX_LIMIT);
-        log.info("Confluence listPages — cloudId={} spaceKey={} limit={}", cloudId, spaceKey, effectiveLimit);
 
-        SpaceInfo space = ConfluenceServiceUtil.parseSpaceResult(
-                confluenceClient.getSpaceByKey(token, cloudId, spaceKey), spaceKey);
+        String normalizedSpaceKey = spaceKey.trim().toUpperCase(Locale.ROOT);
+        int effectiveLimit = (limit == null || limit <= 0) ? DEFAULT_LIMIT : Math.min(limit, MAX_LIMIT);
+        log.info("Confluence listPages — cloudId={} spaceKey={} limit={}", cloudId, normalizedSpaceKey, effectiveLimit);
+
+        SpaceInfo space = spaceInfoCache.getIfPresent(normalizedSpaceKey);
+        if (space == null) {
+            space = ConfluenceServiceUtil.parseSpaceResult(
+                    confluenceClient.getSpaceByKey(token, cloudId, normalizedSpaceKey), normalizedSpaceKey);
+            spaceInfoCache.put(normalizedSpaceKey, space);
+        }
 
         return ConfluenceServiceUtil.parsePagesListResponse(
                 confluenceClient.listPagesBySpaceId(token, cloudId, space.id(), effectiveLimit),
@@ -160,21 +176,23 @@ public class ConfluenceService {
      * @param cloudId the Atlassian cloud ID for the user's tenant
      * @param type    optional space type: global|personal|collaboration|knowledge_base
      * @param status  optional space status: current|archived
+     * @param query   optional space name/title query for server-side filtering
      * @param limit   maximum spaces; clamped to [{@value DEFAULT_SPACES_LIMIT}, {@value MAX_SPACES_LIMIT}]
      * @param cursor  optional opaque pagination cursor from a previous call
      * @return JSON object string with {@code results} (array of spaces) and {@code nextCursor}
      * @throws ConfluenceOperationException if the API response cannot be parsed
      */
     public String listSpaces(String token, String cloudId,
-                             String type, String status, Integer limit, String cursor) {
+                             String type, String status, String query, Integer limit, String cursor) {
         int effectiveLimit = (limit == null || limit <= 0)
                 ? DEFAULT_SPACES_LIMIT
                 : Math.min(limit, MAX_SPACES_LIMIT);
+        String normalizedQuery = (query == null || query.isBlank()) ? null : query.trim();
 
-        log.info("Confluence listSpaces — cloudId={} type={} status={} limit={} cursor={} token={}",
-                cloudId, type, status, effectiveLimit, cursor, token);
+        log.info("Confluence listSpaces — cloudId={} type={} status={} query={} limit={} cursor={}",
+                cloudId, type, status, normalizedQuery, effectiveLimit, cursor);
 
-        String raw = confluenceClient.listSpaces(token, cloudId, type, status, effectiveLimit, cursor);
+        String raw = confluenceClient.listSpaces(token, cloudId, type, status, normalizedQuery, effectiveLimit, cursor);
 
         return ConfluenceServiceUtil.parseSpacesListResponse(raw);
     }
