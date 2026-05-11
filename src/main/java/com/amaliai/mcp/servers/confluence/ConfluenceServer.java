@@ -71,16 +71,19 @@ public class ConfluenceServer {
 
     @Tool(description = "Lists pages in a specific Confluence space. "
             + "Returns each page's ID, title, type, space key, space name, and URL. "
+            + "Supports cursor-based pagination for spaces with many pages. "
             + "Does NOT return page content — use getConfluencePageContent to read a specific page. "
             + "Use the space key visible in Confluence URLs (e.g. 'ENG', 'LMS', 'AED').")
     public String listConfluencePages(
             @ToolParam(description = "The ARMS user ID of the authenticated user") int armsUserId,
             @ToolParam(description = "The Confluence space key to list pages from (e.g. 'ENG', 'LMS')") String spaceKey,
             @ToolParam(description = "Maximum number of pages to return (default 20, max 50)",
-                    required = false) Integer limit) {
+                    required = false) Integer limit,
+            @ToolParam(description = "Opaque pagination cursor from a previous response's nextCursor (optional)",
+                    required = false) String cursor) {
 
         ConfluenceServerHelper.Credentials creds = ConfluenceServerHelper.resolveCredentials(armsUserId, tokenManager);
-        return confluenceService.listPages(creds.token(), creds.cloudId(), spaceKey, limit);
+        return confluenceService.listPages(creds.token(), creds.cloudId(), spaceKey, limit, cursor);
     }
 
     @Tool(description = "Retrieves details for a single Confluence space by its key. "
@@ -121,27 +124,33 @@ public class ConfluenceServer {
 
     @Tool(description = "Retrieves the direct child pages of a Confluence page. "
             + "Returns each child page's ID, title, space ID, parent page ID, URL, and last-modified date. "
+            + "Supports cursor-based pagination for pages with many children. "
             + "Useful for navigating a page hierarchy or discovering sub-pages under a known parent.")
     public String getConfluencePageChildren(
             @ToolParam(description = "The ARMS user ID of the authenticated user") int armsUserId,
             @ToolParam(description = "The numeric ID of the parent Confluence page") String pageId,
             @ToolParam(description = "Maximum number of child pages to return (default 20, max 50)",
-                    required = false) Integer limit) {
+                    required = false) Integer limit,
+            @ToolParam(description = "Opaque pagination cursor from a previous response's nextCursor (optional)",
+                    required = false) String cursor) {
 
         ConfluenceServerHelper.Credentials creds = ConfluenceServerHelper.resolveCredentials(armsUserId, tokenManager);
-        return confluenceService.getPageChildren(creds.token(), creds.cloudId(), pageId, limit);
+        return confluenceService.getPageChildren(creds.token(), creds.cloudId(), pageId, limit, cursor);
     }
 
     @Tool(description = "Retrieves the list of file attachments on a Confluence page. "
             + "Returns each attachment's ID, title, media type, file size in bytes, "
-            + "the page it belongs to, a viewable URL, a direct download link, and last-modified date.")
+            + "the page it belongs to, a viewable URL, a direct download link, and last-modified date. "
+            + "Supports cursor-based pagination for pages with many attachments.")
     public String getConfluenceAttachments(
             @ToolParam(description = "The ARMS user ID of the authenticated user") int armsUserId,
             @ToolParam(description = "The numeric ID of the Confluence page") String pageId,
             @ToolParam(description = "Maximum number of attachments to return (default 20, max 50)",
-                    required = false) Integer limit) {
+                    required = false) Integer limit,
+            @ToolParam(description = "Opaque pagination cursor from a previous response's nextCursor (optional)",
+                    required = false) String cursor) {
 
         ConfluenceServerHelper.Credentials creds = ConfluenceServerHelper.resolveCredentials(armsUserId, tokenManager);
-        return confluenceService.getAttachments(creds.token(), creds.cloudId(), pageId, limit);
+        return confluenceService.getAttachments(creds.token(), creds.cloudId(), pageId, limit, cursor);
     }
 }
