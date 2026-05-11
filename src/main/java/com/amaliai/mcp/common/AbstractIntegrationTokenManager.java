@@ -1,5 +1,7 @@
 package com.amaliai.mcp.common;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.client.RestClient;
@@ -9,9 +11,9 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.ByteBuffer;
+import java.time.Duration;
 import java.util.Base64;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Shared base class for all integration token managers.
@@ -35,7 +37,13 @@ public abstract class AbstractIntegrationTokenManager {
     protected final RestClient backendApiClient;
     private final SecretKey secretKey;
     private final String integrationType;
-    private final AtomicReference<UUID> cachedCatalogId = new AtomicReference<>();
+    private static final String INTEGRATION_ID_CACHE_KEY = "integrationId";
+    private final Cache<String, UUID> integrationIdCache = Caffeine.newBuilder()
+            .expireAfterWrite(Duration.ofDays(7))
+            .build();
+    private final Cache<UserIntegrationKey, String> encryptedTokenCache = Caffeine.newBuilder()
+            .expireAfterWrite(Duration.ofMinutes(5))
+            .build();
 
     protected AbstractIntegrationTokenManager(
             RestClient backendApiClient,
@@ -59,17 +67,31 @@ public abstract class AbstractIntegrationTokenManager {
      * @throws RuntimeException (connector-specific) if the token cannot be fetched or decrypted
      */
     public String getAccessToken(int armsUserId, UUID integrationId) {
-        log.info("Fetching {} access token — armsUserId={}", integrationType, armsUserId);
+        UserIntegrationKey key = new UserIntegrationKey(armsUserId, integrationId);
+
+        String encrypted = encryptedTokenCache.getIfPresent(key);
+        if (encrypted == null) {
+            log.info("Fetching {} access token — armsUserId={}", integrationType, armsUserId);
+            try {
+                encrypted = backendApiClient.get()
+                        .uri("/integrations/access-token/{userId}/{integrationId}",
+                                armsUserId, integrationId)
+                        .retrieve()
+                        .body(String.class);
+                if (encrypted != null) {
+                    encryptedTokenCache.put(key, encrypted);
+                }
+            } catch (Exception e) {
+                throw wrapAuthException(
+                        "Failed to retrieve " + integrationType + " access token for user " + armsUserId, e);
+            }
+        }
+
         try {
-            String encrypted = backendApiClient.get()
-                    .uri("/integrations/access-token/{userId}/{integrationId}",
-                            armsUserId, integrationId)
-                    .retrieve()
-                    .body(String.class);
             return decrypt(encrypted);
         } catch (Exception e) {
             throw wrapAuthException(
-                    "Failed to retrieve " + integrationType + " access token for user " + armsUserId, e);
+                    "Failed to decrypt " + integrationType + " access token for user " + armsUserId, e);
         }
     }
 
@@ -80,9 +102,12 @@ public abstract class AbstractIntegrationTokenManager {
      * @throws RuntimeException (connector-specific) if the catalog ID cannot be resolved
      */
     public UUID resolveIntegrationId() {
-        UUID cached = cachedCatalogId.get();
-        if (cached != null) return cached;
-        log.info("Resolving {} integration catalog ID from backend (first call)", integrationType);
+        UUID cached = integrationIdCache.getIfPresent(INTEGRATION_ID_CACHE_KEY);
+        if (cached != null) {
+            return cached;
+        }
+
+        log.info("Resolving {} integration catalog ID", integrationType);
         try {
             String id = backendApiClient.get()
                     .uri("/integrations/catalog-id/{type}", integrationType)
@@ -90,13 +115,15 @@ public abstract class AbstractIntegrationTokenManager {
                     .body(String.class);
             assert id != null;
             UUID resolved = UUID.fromString(id);
-            cachedCatalogId.compareAndSet(null, resolved);
-            return cachedCatalogId.get();
+            integrationIdCache.put(INTEGRATION_ID_CACHE_KEY, resolved);
+            return resolved;
         } catch (Exception e) {
             throw wrapAuthException(
                     "Failed to resolve " + integrationType + " integration catalog ID", e);
         }
     }
+
+    public record UserIntegrationKey(int armsUserId, UUID integrationId) {}
 
     /**
      * Decrypts an AES-256-GCM ciphertext produced by the backend token encryption service.

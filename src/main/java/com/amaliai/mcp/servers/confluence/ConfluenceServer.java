@@ -9,8 +9,6 @@ import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Service;
 
-import java.util.UUID;
-
 /**
  * MCP tool entrypoint for Confluence operations.
  * <p>
@@ -93,16 +91,15 @@ public class ConfluenceServer {
             @ToolParam(description = "The ARMS user ID of the authenticated user") int armsUserId,
             @ToolParam(description = "The numeric Confluence space ID to fetch") String spaceId) {
 
-        UUID integrationId = tokenManager.resolveIntegrationId();
-        String token   = tokenManager.getAccessToken(armsUserId, integrationId);
-        String cloudId = tokenManager.getCloudId(armsUserId, integrationId);
-        return confluenceService.getSpace(token, cloudId, spaceId);
+        ConfluenceServerHelper.Credentials creds = ConfluenceServerHelper.resolveCredentials(armsUserId, tokenManager);
+        return confluenceService.getSpace(creds.token(), creds.cloudId(), spaceId);
     }
 
     @Tool(description = "Lists Confluence spaces visible to the authenticated user. "
             + "Returns a JSON object with a 'results' array (each entry containing id, key, name, "
             + "type, status, authorId, createdAt, homepageId, description, url) and a 'nextCursor' "
             + "string for pagination (null when there are no more pages). "
+            + "Optionally filter by a space name/title query to avoid scanning all spaces client-side. "
             + "Optionally filter by space type (global|personal|collaboration|knowledge_base) "
             + "and status (current|archived).")
     public String listConfluenceSpaces(
@@ -111,15 +108,15 @@ public class ConfluenceServer {
                     required = false) String type,
             @ToolParam(description = "Space status filter: current or archived (optional)",
                     required = false) String status,
+            @ToolParam(description = "Optional query to match space name/title (server-side filtering)",
+                    required = false) String query,
             @ToolParam(description = "Maximum number of spaces to return (default 25, max 250)",
                     required = false) Integer limit,
             @ToolParam(description = "Opaque pagination cursor from a previous response's nextCursor (optional)",
                     required = false) String cursor) {
 
-        UUID integrationId = tokenManager.resolveIntegrationId();
-        String token   = tokenManager.getAccessToken(armsUserId, integrationId);
-        String cloudId = tokenManager.getCloudId(armsUserId, integrationId);
-        return confluenceService.listSpaces(token, cloudId, type, status, limit, cursor);
+        ConfluenceServerHelper.Credentials creds = ConfluenceServerHelper.resolveCredentials(armsUserId, tokenManager);
+        return confluenceService.listSpaces(creds.token(), creds.cloudId(), type, status, query, limit, cursor);
     }
 
     @Tool(description = "Retrieves the direct child pages of a Confluence page. "
@@ -131,10 +128,8 @@ public class ConfluenceServer {
             @ToolParam(description = "Maximum number of child pages to return (default 20, max 50)",
                     required = false) Integer limit) {
 
-        UUID integrationId = tokenManager.resolveIntegrationId();
-        String token   = tokenManager.getAccessToken(armsUserId, integrationId);
-        String cloudId = tokenManager.getCloudId(armsUserId, integrationId);
-        return confluenceService.getPageChildren(token, cloudId, pageId, limit);
+        ConfluenceServerHelper.Credentials creds = ConfluenceServerHelper.resolveCredentials(armsUserId, tokenManager);
+        return confluenceService.getPageChildren(creds.token(), creds.cloudId(), pageId, limit);
     }
 
     @Tool(description = "Retrieves the list of file attachments on a Confluence page. "
@@ -146,9 +141,7 @@ public class ConfluenceServer {
             @ToolParam(description = "Maximum number of attachments to return (default 20, max 50)",
                     required = false) Integer limit) {
 
-        UUID integrationId = tokenManager.resolveIntegrationId();
-        String token   = tokenManager.getAccessToken(armsUserId, integrationId);
-        String cloudId = tokenManager.getCloudId(armsUserId, integrationId);
-        return confluenceService.getAttachments(token, cloudId, pageId, limit);
+        ConfluenceServerHelper.Credentials creds = ConfluenceServerHelper.resolveCredentials(armsUserId, tokenManager);
+        return confluenceService.getAttachments(creds.token(), creds.cloudId(), pageId, limit);
     }
 }
