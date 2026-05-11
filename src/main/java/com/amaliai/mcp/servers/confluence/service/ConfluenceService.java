@@ -161,8 +161,15 @@ public class ConfluenceService {
 
         SpaceInfo space = spaceInfoCache.getIfPresent(normalizedSpaceKey);
         if (space == null) {
-            space = ConfluenceServiceUtil.parseSpaceResult(
-                    confluenceClient.getSpaceByKey(token, cloudId, normalizedSpaceKey), normalizedSpaceKey);
+            try {
+                space = ConfluenceServiceUtil.parseSpaceResult(
+                        confluenceClient.getSpaceByKey(token, cloudId, normalizedSpaceKey), normalizedSpaceKey);
+            } catch (ConfluenceOperationException e) {
+                log.info("Space key '{}' not found, falling back to name search for: {}", normalizedSpaceKey, spaceKey.trim());
+                space = ConfluenceServiceUtil.parseSpaceResult(
+                        confluenceClient.listSpaces(token, cloudId, null, null, spaceKey.trim(), DEFAULT_SPACES_LIMIT, null),
+                        spaceKey.trim());
+            }
             spaceInfoCache.put(normalizedSpaceKey, space);
         }
 
@@ -195,8 +202,15 @@ public class ConfluenceService {
 
         SpaceInfo space = spaceInfoCache.getIfPresent(normalizedSpaceKey);
         if (space == null) {
-            space = ConfluenceServiceUtil.parseSpaceResult(
-                    confluenceClient.getSpaceByKey(token, cloudId, normalizedSpaceKey), normalizedSpaceKey);
+            try {
+                space = ConfluenceServiceUtil.parseSpaceResult(
+                        confluenceClient.getSpaceByKey(token, cloudId, normalizedSpaceKey), normalizedSpaceKey);
+            } catch (ConfluenceOperationException e) {
+                log.info("Space key '{}' not found, falling back to name search for: {}", normalizedSpaceKey, spaceKey.trim());
+                space = ConfluenceServiceUtil.parseSpaceResult(
+                        confluenceClient.listSpaces(token, cloudId, null, null, spaceKey.trim(), DEFAULT_SPACES_LIMIT, null),
+                        spaceKey.trim());
+            }
             spaceInfoCache.put(normalizedSpaceKey, space);
         }
 
