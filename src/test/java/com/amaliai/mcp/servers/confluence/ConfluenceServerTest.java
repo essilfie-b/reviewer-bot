@@ -14,8 +14,6 @@ import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.UUID;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
@@ -24,15 +22,8 @@ import static org.mockito.Mockito.*;
  *
  * Coverage strategy
  * -----------------
- * ConfluenceServer has two distinct credential-resolution patterns:
- *
- *  A) Via static helper — searchConfluenceContent, getConfluencePage,
- *     getConfluencePageContent, listConfluencePages
- *     → mock ConfluenceServerHelper.resolveCredentials() with MockedStatic
- *
- *  B) Via direct tokenManager calls — getConfluenceSpace, listConfluenceSpaces,
- *     getConfluencePageChildren, getConfluenceAttachments
- *     → stub tokenManager.resolveIntegrationId(), getAccessToken(), getCloudId()
+ * ConfluenceServer resolves credentials via static helper for all tools.
+ * → mock ConfluenceServerHelper.resolveCredentials() with MockedStatic
  *
  * Every method has exactly one code path, so a single happy-path test per
  * tool achieves 100 % instruction and branch coverage.
@@ -45,7 +36,6 @@ class ConfluenceServerTest {
     private static final String TOKEN         = "access-token";
     private static final String CLOUD_ID      = "cloud-abc";
     private static final String RESULT        = "{\"ok\":true}";
-    private static final UUID   INTEGRATION_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
 
     // ---- mocks ----
     @Mock private ConfluenceService      confluenceService;
@@ -150,32 +140,22 @@ class ConfluenceServerTest {
     }
 
     // =========================================================================
-    // Pattern B — credentials resolved directly via tokenManager
+    // Remaining tools (also via ConfluenceServerHelper)
     // =========================================================================
 
     @Nested
-    class PatternBToolsTests {
-
-        /** Stubs the three tokenManager calls used by pattern-B tools. */
-        private void stubTokenManager() {
-            when(tokenManager.resolveIntegrationId()).thenReturn(INTEGRATION_ID);
-            when(tokenManager.getAccessToken(ARMS_USER_ID, INTEGRATION_ID)).thenReturn(TOKEN);
-            when(tokenManager.getCloudId(ARMS_USER_ID, INTEGRATION_ID)).thenReturn(CLOUD_ID);
-        }
+    class RemainingToolsTests {
 
         // --- getConfluenceSpace ---
 
         @Test
         void getConfluenceSpace_delegatesCorrectly() {
-            stubTokenManager();
+            // ConfluenceServer expects a normalized spaceKey (passed-through as-is in this test)
             when(confluenceService.getSpace(TOKEN, CLOUD_ID, "ENG")).thenReturn(RESULT);
 
             String result = confluenceServer.getConfluenceSpace(ARMS_USER_ID, "ENG");
 
             assertThat(result).isEqualTo(RESULT);
-            verify(tokenManager).resolveIntegrationId();
-            verify(tokenManager).getAccessToken(ARMS_USER_ID, INTEGRATION_ID);
-            verify(tokenManager).getCloudId(ARMS_USER_ID, INTEGRATION_ID);
             verify(confluenceService).getSpace(TOKEN, CLOUD_ID, "ENG");
         }
 
@@ -183,24 +163,22 @@ class ConfluenceServerTest {
 
         @Test
         void listConfluenceSpaces_withAllParams_delegatesCorrectly() {
-            stubTokenManager();
-            when(confluenceService.listSpaces(TOKEN, CLOUD_ID, "global", "current", 50, "cursor-x"))
+            when(confluenceService.listSpaces(TOKEN, CLOUD_ID, "global", "current", "eng", 50, "cursor-x"))
                     .thenReturn(RESULT);
 
             String result = confluenceServer.listConfluenceSpaces(
-                    ARMS_USER_ID, "global", "current", 50, "cursor-x");
+                    ARMS_USER_ID, "global", "current", "eng", 50, "cursor-x");
 
             assertThat(result).isEqualTo(RESULT);
-            verify(confluenceService).listSpaces(TOKEN, CLOUD_ID, "global", "current", 50, "cursor-x");
+            verify(confluenceService).listSpaces(TOKEN, CLOUD_ID, "global", "current", "eng", 50, "cursor-x");
         }
 
         @Test
         void listConfluenceSpaces_withNullOptionals_delegatesNullsThrough() {
-            stubTokenManager();
-            when(confluenceService.listSpaces(TOKEN, CLOUD_ID, null, null, null, null))
+            when(confluenceService.listSpaces(TOKEN, CLOUD_ID, null, null, null, null, null))
                     .thenReturn(RESULT);
 
-            String result = confluenceServer.listConfluenceSpaces(ARMS_USER_ID, null, null, null, null);
+            String result = confluenceServer.listConfluenceSpaces(ARMS_USER_ID, null, null, null, null, null);
 
             assertThat(result).isEqualTo(RESULT);
         }
@@ -209,7 +187,6 @@ class ConfluenceServerTest {
 
         @Test
         void getConfluencePageChildren_withLimit_delegatesCorrectly() {
-            stubTokenManager();
             when(confluenceService.getPageChildren(TOKEN, CLOUD_ID, "page-3", 15)).thenReturn(RESULT);
 
             String result = confluenceServer.getConfluencePageChildren(ARMS_USER_ID, "page-3", 15);
@@ -220,7 +197,6 @@ class ConfluenceServerTest {
 
         @Test
         void getConfluencePageChildren_withNullLimit_delegatesNullThrough() {
-            stubTokenManager();
             when(confluenceService.getPageChildren(TOKEN, CLOUD_ID, "page-3", null)).thenReturn(RESULT);
 
             String result = confluenceServer.getConfluencePageChildren(ARMS_USER_ID, "page-3", null);
@@ -232,7 +208,6 @@ class ConfluenceServerTest {
 
         @Test
         void getConfluenceAttachments_withLimit_delegatesCorrectly() {
-            stubTokenManager();
             when(confluenceService.getAttachments(TOKEN, CLOUD_ID, "page-4", 5)).thenReturn(RESULT);
 
             String result = confluenceServer.getConfluenceAttachments(ARMS_USER_ID, "page-4", 5);
@@ -243,7 +218,6 @@ class ConfluenceServerTest {
 
         @Test
         void getConfluenceAttachments_withNullLimit_delegatesNullThrough() {
-            stubTokenManager();
             when(confluenceService.getAttachments(TOKEN, CLOUD_ID, "page-4", null)).thenReturn(RESULT);
 
             String result = confluenceServer.getConfluenceAttachments(ARMS_USER_ID, "page-4", null);
