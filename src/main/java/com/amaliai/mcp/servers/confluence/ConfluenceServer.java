@@ -92,7 +92,7 @@ public class ConfluenceServer {
             @ToolParam(description = "The Confluence space key to fetch (e.g. 'ENG', 'LMS')") String spaceKey) {
 
         ConfluenceServerHelper.Credentials creds = ConfluenceServerHelper.resolveCredentials(armsUserId, tokenManager);
-        return confluenceService.getSpace(creds.token(), creds.cloudId(), spaceId);
+        return confluenceService.getSpace(creds.token(), creds.cloudId(), spaceKey);
     }
 
     @Tool(description = "Lists Confluence spaces visible to the authenticated user. "

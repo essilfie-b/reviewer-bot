@@ -150,12 +150,13 @@ class ConfluenceServerTest {
 
         @Test
         void getConfluenceSpace_delegatesCorrectly() {
-            when(confluenceService.getSpace(TOKEN, CLOUD_ID, "space-99")).thenReturn(RESULT);
+            // ConfluenceServer expects a normalized spaceKey (passed-through as-is in this test)
+            when(confluenceService.getSpace(TOKEN, CLOUD_ID, "ENG")).thenReturn(RESULT);
 
             String result = confluenceServer.getConfluenceSpace(ARMS_USER_ID, "ENG");
 
             assertThat(result).isEqualTo(RESULT);
-            verify(confluenceService).getSpace(TOKEN, CLOUD_ID, "space-99");
+            verify(confluenceService).getSpace(TOKEN, CLOUD_ID, "ENG");
         }
 
         // --- listConfluenceSpaces ---
