@@ -206,27 +206,27 @@ class ConfluenceGraphClientTest {
         @Test
         void listPagesBySpaceId_success_returnsBody() {
             stubSuccess(BODY);
-            assertThat(client.listPagesBySpaceId(TOKEN, CLOUD_ID, "space-42", 25)).isEqualTo(BODY);
+            assertThat(client.listPagesBySpaceId(TOKEN, CLOUD_ID, "space-42", 25, null)).isEqualTo(BODY);
         }
 
         @ParameterizedTest
         @ValueSource(ints = {401, 403})
         void listPagesBySpaceId_authError_throwsConfluenceAuthException(int statusCode) {
             stubHttpError(HttpStatus.valueOf(statusCode));
-            assertThatThrownBy(() -> client.listPagesBySpaceId(TOKEN, CLOUD_ID, "space-42", 25))
+            assertThatThrownBy(() -> client.listPagesBySpaceId(TOKEN, CLOUD_ID, "space-42", 25, null))
                     .isInstanceOf(ConfluenceAuthException.class);
         }
 
         @Test
         void listPagesBySpaceId_otherHttpError_throwsConfluenceOperationException() {
             stubHttpError(HttpStatus.SERVICE_UNAVAILABLE);
-            assertThatThrownBy(() -> client.listPagesBySpaceId(TOKEN, CLOUD_ID, "space-42", 25))
+            assertThatThrownBy(() -> client.listPagesBySpaceId(TOKEN, CLOUD_ID, "space-42", 25, null))
                     .isInstanceOf(ConfluenceOperationException.class);
         }
     }
 
     // ------------------------------------------------------------------
-    // listSpaces() — has its own try/catch + optional param branches
+    // listSpaces()
     // ------------------------------------------------------------------
     @Nested
     class ListSpacesTests {
@@ -234,51 +234,57 @@ class ConfluenceGraphClientTest {
         @Test
         void listSpaces_allParamsNull_success() {
             stubSuccess(BODY);
-            assertThat(client.listSpaces(TOKEN, CLOUD_ID, null, null, 10, null)).isEqualTo(BODY);
+            assertThat(client.listSpaces(TOKEN, CLOUD_ID, null, null, null, 10, null)).isEqualTo(BODY);
         }
 
         @Test
         void listSpaces_allParamsBlank_success() {
             stubSuccess(BODY);
-            assertThat(client.listSpaces(TOKEN, CLOUD_ID, "  ", "  ", 10, "  ")).isEqualTo(BODY);
+            assertThat(client.listSpaces(TOKEN, CLOUD_ID, "  ", "  ", "  ", 10, "  ")).isEqualTo(BODY);
         }
 
         @Test
         void listSpaces_withAllOptionalParams_success() {
             stubSuccess(BODY);
-            assertThat(client.listSpaces(TOKEN, CLOUD_ID, "global", "current", 50, "cursor-abc")).isEqualTo(BODY);
+            assertThat(client.listSpaces(TOKEN, CLOUD_ID, "global", "current", "eng", 50, "cursor-abc")).isEqualTo(BODY);
         }
 
         @Test
         void listSpaces_withTypeOnly_success() {
             stubSuccess(BODY);
-            assertThat(client.listSpaces(TOKEN, CLOUD_ID, "personal", null, 10, null)).isEqualTo(BODY);
+            assertThat(client.listSpaces(TOKEN, CLOUD_ID, "personal", null, null, 10, null)).isEqualTo(BODY);
         }
 
         @Test
         void listSpaces_withStatusOnly_success() {
             stubSuccess(BODY);
-            assertThat(client.listSpaces(TOKEN, CLOUD_ID, null, "archived", 10, null)).isEqualTo(BODY);
+            assertThat(client.listSpaces(TOKEN, CLOUD_ID, null, "archived", null, 10, null)).isEqualTo(BODY);
+        }
+
+        @Test
+        void listSpaces_withQueryOnly_success() {
+            stubSuccess(BODY);
+            assertThat(client.listSpaces(TOKEN, CLOUD_ID, null, null, "engineering", 10, null)).isEqualTo(BODY);
         }
 
         @Test
         void listSpaces_withCursorOnly_success() {
             stubSuccess(BODY);
-            assertThat(client.listSpaces(TOKEN, CLOUD_ID, null, null, 10, "next-cursor")).isEqualTo(BODY);
+            assertThat(client.listSpaces(TOKEN, CLOUD_ID, null, null, null, 10, "next-cursor")).isEqualTo(BODY);
         }
 
         @ParameterizedTest
         @ValueSource(ints = {401, 403})
         void listSpaces_authError_throwsConfluenceAuthException(int statusCode) {
             stubHttpError(HttpStatus.valueOf(statusCode));
-            assertThatThrownBy(() -> client.listSpaces(TOKEN, CLOUD_ID, null, null, 10, null))
+            assertThatThrownBy(() -> client.listSpaces(TOKEN, CLOUD_ID, null, null, null, 10, null))
                     .isInstanceOf(ConfluenceAuthException.class);
         }
 
         @Test
         void listSpaces_otherHttpError_throwsConfluenceOperationException() {
             stubHttpError(HttpStatus.TOO_MANY_REQUESTS);
-            assertThatThrownBy(() -> client.listSpaces(TOKEN, CLOUD_ID, null, null, 10, null))
+            assertThatThrownBy(() -> client.listSpaces(TOKEN, CLOUD_ID, null, null, null, 10, null))
                     .isInstanceOf(ConfluenceOperationException.class);
         }
     }
@@ -321,21 +327,21 @@ class ConfluenceGraphClientTest {
         @Test
         void getPageChildren_success_returnsBody() {
             stubSuccess(BODY);
-            assertThat(client.getPageChildren(TOKEN, CLOUD_ID, "page-1", 20)).isEqualTo(BODY);
+            assertThat(client.getPageChildren(TOKEN, CLOUD_ID, "page-1", 20, null)).isEqualTo(BODY);
         }
 
         @ParameterizedTest
         @ValueSource(ints = {401, 403})
         void getPageChildren_authError_throwsConfluenceAuthException(int statusCode) {
             stubHttpError(HttpStatus.valueOf(statusCode));
-            assertThatThrownBy(() -> client.getPageChildren(TOKEN, CLOUD_ID, "page-1", 20))
+            assertThatThrownBy(() -> client.getPageChildren(TOKEN, CLOUD_ID, "page-1", 20, null))
                     .isInstanceOf(ConfluenceAuthException.class);
         }
 
         @Test
         void getPageChildren_otherHttpError_throwsConfluenceOperationException() {
             stubHttpError(HttpStatus.UNPROCESSABLE_ENTITY);
-            assertThatThrownBy(() -> client.getPageChildren(TOKEN, CLOUD_ID, "page-1", 20))
+            assertThatThrownBy(() -> client.getPageChildren(TOKEN, CLOUD_ID, "page-1", 20, null))
                     .isInstanceOf(ConfluenceOperationException.class);
         }
     }
@@ -349,21 +355,21 @@ class ConfluenceGraphClientTest {
         @Test
         void getAttachments_success_returnsBody() {
             stubSuccess(BODY);
-            assertThat(client.getAttachments(TOKEN, CLOUD_ID, "page-1", 15)).isEqualTo(BODY);
+            assertThat(client.getAttachments(TOKEN, CLOUD_ID, "page-1", 15, null)).isEqualTo(BODY);
         }
 
         @ParameterizedTest
         @ValueSource(ints = {401, 403})
         void getAttachments_authError_throwsConfluenceAuthException(int statusCode) {
             stubHttpError(HttpStatus.valueOf(statusCode));
-            assertThatThrownBy(() -> client.getAttachments(TOKEN, CLOUD_ID, "page-1", 15))
+            assertThatThrownBy(() -> client.getAttachments(TOKEN, CLOUD_ID, "page-1", 15, null))
                     .isInstanceOf(ConfluenceAuthException.class);
         }
 
         @Test
         void getAttachments_otherHttpError_throwsConfluenceOperationException() {
             stubHttpError(HttpStatus.CONFLICT);
-            assertThatThrownBy(() -> client.getAttachments(TOKEN, CLOUD_ID, "page-1", 15))
+            assertThatThrownBy(() -> client.getAttachments(TOKEN, CLOUD_ID, "page-1", 15, null))
                     .isInstanceOf(ConfluenceOperationException.class);
         }
     }
@@ -384,7 +390,7 @@ class ConfluenceGraphClientTest {
         @Test
         void listSpaces_setsCorrectBearerHeader() {
             stubSuccess(BODY);
-            client.listSpaces(TOKEN, CLOUD_ID, null, null, 5, null);
+            client.listSpaces(TOKEN, CLOUD_ID, null, null, null, 5, null);
             verify(headersSpec).header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN);
         }
     }

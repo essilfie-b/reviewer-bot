@@ -1,11 +1,14 @@
 package com.amaliai.mcp.servers.confluence.util;
 
 import com.amaliai.mcp.common.AbstractIntegrationTokenManager;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.amaliai.mcp.servers.confluence.exception.ConfluenceAuthException;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.UUID;
 
@@ -18,6 +21,10 @@ import java.util.UUID;
  */
 @Component
 public class ConfluenceTokenManager extends AbstractIntegrationTokenManager {
+
+    private final Cache<UserIntegrationKey, String> cloudIdCache = Caffeine.newBuilder()
+            .expireAfterWrite(Duration.ofDays(7))
+            .build();
 
     public ConfluenceTokenManager(@Qualifier("backendApiClient") RestClient backendApiClient) {
         super(backendApiClient, "confluence", "TOKEN_ENCRYPTION_K");
@@ -35,6 +42,13 @@ public class ConfluenceTokenManager extends AbstractIntegrationTokenManager {
      * @throws ConfluenceAuthException if the cloudId cannot be fetched or is blank
      */
     public String getCloudId(int armsUserId, UUID integrationId) {
+        UserIntegrationKey key = new UserIntegrationKey(armsUserId, integrationId);
+
+        String cachedCloudId = cloudIdCache.getIfPresent(key);
+        if (cachedCloudId != null) {
+            return cachedCloudId;
+        }
+
         log.info("Fetching Confluence cloudId — armsUserId={}", armsUserId);
         try {
             @SuppressWarnings("unchecked")
@@ -51,6 +65,7 @@ public class ConfluenceTokenManager extends AbstractIntegrationTokenManager {
             if (cloudId == null || cloudId.isBlank()) {
                 throw new IllegalStateException("Provider metadata missing 'cloudId' field");
             }
+            cloudIdCache.put(key, cloudId);
             return cloudId;
         } catch (ConfluenceAuthException e) {
             throw e;

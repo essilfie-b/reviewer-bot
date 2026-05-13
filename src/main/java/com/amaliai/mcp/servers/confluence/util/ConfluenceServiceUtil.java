@@ -127,7 +127,7 @@ public class ConfluenceServiceUtil {
 
     /**
      * Parses a Confluence v2 {@code /wiki/api/v2/pages/{id}/children} response body into a
-     * simplified JSON array.
+     * JSON object with results array and cursor-based pagination.
      *
      * <p>Expected v2 response shape:
      * <pre>
@@ -139,7 +139,7 @@ public class ConfluenceServiceUtil {
      *       "version": { "createdAt": "2024-01-01T00:00:00.000Z" }
      *     }
      *   ],
-     *   "_links": { "base": "https://company.atlassian.net" }
+     *   "_links": { "base": "https://company.atlassian.net", "next": "...?cursor=..." }
      * }
      * </pre>
      */
@@ -167,7 +167,12 @@ public class ConfluenceServiceUtil {
                 output.add(item);
             }
 
-            return OBJECT_MAPPER.writeValueAsString(output);
+            ObjectNode out = OBJECT_MAPPER.createObjectNode();
+            out.set(FIELD_RESULTS, output);
+            String nextLink = root.path(FIELD_LINKS).path("next").asText(null);
+            out.put("nextCursor", extractCursor(nextLink));
+
+            return OBJECT_MAPPER.writeValueAsString(out);
         } catch (JsonProcessingException e) {
             throw new ConfluenceOperationException("Failed to parse Confluence page children response", e);
         }
@@ -175,11 +180,8 @@ public class ConfluenceServiceUtil {
 
     /**
      * Parses a Confluence v2 {@code /wiki/api/v2/pages/{id}/attachments} response body into a
-     * simplified JSON array.
-     * @param responseBody
-     * @return
+     * JSON object with results array and cursor-based pagination.
      */
-
     public static String parseAttachmentsResponse(String responseBody) {
         try {
             JsonNode root    = OBJECT_MAPPER.readTree(responseBody);
@@ -205,7 +207,12 @@ public class ConfluenceServiceUtil {
                 output.add(item);
             }
 
-            return OBJECT_MAPPER.writeValueAsString(output);
+            ObjectNode out = OBJECT_MAPPER.createObjectNode();
+            out.set(FIELD_RESULTS, output);
+            String nextLink = root.path(FIELD_LINKS).path("next").asText(null);
+            out.put("nextCursor", extractCursor(nextLink));
+
+            return OBJECT_MAPPER.writeValueAsString(out);
         } catch (JsonProcessingException e) {
             throw new ConfluenceOperationException("Failed to parse Confluence attachments response", e);
         }
@@ -369,7 +376,8 @@ public class ConfluenceServiceUtil {
     }
 
     /**
-     * Parses a v2 {@code GET /wiki/api/v2/pages?space-id=} response into a JSON array.
+     * Parses a v2 {@code GET /wiki/api/v2/pages?space-id=} response into a JSON object with
+     * results array and cursor-based pagination.
      * Each result is a direct page object (not wrapped in a {@code content} field as in search).
      * The base URL is taken from the root {@code _links.base} and passed down to each page node.
      */
@@ -383,7 +391,12 @@ public class ConfluenceServiceUtil {
                 output.add(buildV2PageNode(page, spaceKey, spaceName, baseUrl));
             }
 
-            return OBJECT_MAPPER.writeValueAsString(output);
+            ObjectNode out = OBJECT_MAPPER.createObjectNode();
+            out.set(FIELD_RESULTS, output);
+            String nextLink = root.path(FIELD_LINKS).path("next").asText(null);
+            out.put("nextCursor", extractCursor(nextLink));
+
+            return OBJECT_MAPPER.writeValueAsString(out);
         } catch (JsonProcessingException e) {
             throw new ConfluenceOperationException("Failed to parse Confluence pages list response", e);
         }
@@ -435,8 +448,6 @@ public class ConfluenceServiceUtil {
             JsonNode root  = OBJECT_MAPPER.readTree(responseBody);
             JsonNode links = root.path(FIELD_LINKS);
             JsonNode desc  = root.path(FIELD_DESCRIPTION).path("plain").path(FIELD_VALUE);
-            JsonNode excerpt = root.path(FIELD_EXCERPT);
-            JsonNode resultGlobalContainer = root.path("resultGlobalContainer");
 
             ObjectNode item = OBJECT_MAPPER.createObjectNode();
             item.put(FIELD_ID,          root.path(FIELD_ID).asText(null));
@@ -444,13 +455,14 @@ public class ConfluenceServiceUtil {
             item.put(FIELD_NAME,        root.path(FIELD_NAME).asText(null));
             item.put(FIELD_TYPE,        root.path(FIELD_TYPE).asText(null));
             item.put(FIELD_STATUS,      root.path(FIELD_STATUS).asText(null));
-            item.put(FIELD_AUTHOR_ID,    root.path(FIELD_AUTHOR_ID).asText(null));
-            item.put(FIELD_CREATED_AT,   root.path(FIELD_CREATED_AT).asText(null));
-            item.put(FIELD_HOMEPAGE_ID,  root.path(FIELD_HOMEPAGE_ID).asText(null));
+            item.put(FIELD_AUTHOR_ID,   root.path(FIELD_AUTHOR_ID).asText(null));
+            item.put(FIELD_CREATED_AT,  root.path(FIELD_CREATED_AT).asText(null));
+            item.put(FIELD_HOMEPAGE_ID, root.path(FIELD_HOMEPAGE_ID).asText(null));
             item.put(FIELD_DESCRIPTION, desc.asText(null));
-            item.put(FIELD_EXCERPT,     excerpt.asText(null));
-            item.set("resultGlobalContainer", resultGlobalContainer.isMissingNode() ? null : resultGlobalContainer);
-            item.put(FIELD_URL,         links.path(FIELD_WEBUI).asText(null));
+            String webui   = links.path(FIELD_WEBUI).asText(null);
+            String base    = links.path(FIELD_BASE).asText(null);
+            String fullUrl = (base != null && webui != null) ? base + webui : webui;
+            item.put(FIELD_URL, fullUrl);
 
             return OBJECT_MAPPER.writeValueAsString(item);
         } catch (JsonProcessingException e) {
@@ -460,7 +472,7 @@ public class ConfluenceServiceUtil {
 
     /**
      * Parses the Confluence v2 {@code /wiki/api/v2/spaces} response body into a
-     * simplified JSON object:
+     * simplified JSON object with enhanced space details and pagination:
      * <pre>
      * { "results": [ {id, key, name, type, status, authorId, createdAt, homepageId, description, url}, ... ],
      *   "nextCursor": "..." | null }
@@ -468,13 +480,17 @@ public class ConfluenceServiceUtil {
      */
     public static String parseSpacesListResponse(String responseBody) {
         try {
-            JsonNode root = OBJECT_MAPPER.readTree(responseBody);
+            JsonNode root    = OBJECT_MAPPER.readTree(responseBody);
             JsonNode results = root.path(FIELD_RESULTS);
-            ArrayNode arr = OBJECT_MAPPER.createArrayNode();
+            String   baseUrl = root.path(FIELD_LINKS).path(FIELD_BASE).asText(null);
+            ArrayNode arr    = OBJECT_MAPPER.createArrayNode();
 
             for (JsonNode space : results) {
-                JsonNode links = space.path(FIELD_LINKS);
-                JsonNode resultGlobalContainer = space.path("resultGlobalContainer");
+                JsonNode links  = space.path(FIELD_LINKS);
+                JsonNode desc   = space.path(FIELD_DESCRIPTION).path("plain").path(FIELD_VALUE);
+
+                String webui   = links.path(FIELD_WEBUI).asText(null);
+                String fullUrl = (baseUrl != null && webui != null) ? baseUrl + webui : webui;
 
                 ObjectNode item = OBJECT_MAPPER.createObjectNode();
                 item.put(FIELD_ID,          space.path(FIELD_ID).asText(null));
@@ -482,8 +498,11 @@ public class ConfluenceServiceUtil {
                 item.put(FIELD_NAME,        space.path(FIELD_NAME).asText(null));
                 item.put(FIELD_TYPE,        space.path(FIELD_TYPE).asText(null));
                 item.put(FIELD_STATUS,      space.path(FIELD_STATUS).asText(null));
-                item.set("resultGlobalContainer", resultGlobalContainer.isMissingNode() ? null : resultGlobalContainer);
-                item.put(FIELD_URL,         links.path(FIELD_WEBUI).asText(null));
+                item.put(FIELD_AUTHOR_ID,   space.path(FIELD_AUTHOR_ID).asText(null));
+                item.put(FIELD_CREATED_AT,  space.path(FIELD_CREATED_AT).asText(null));
+                item.put(FIELD_HOMEPAGE_ID, space.path(FIELD_HOMEPAGE_ID).asText(null));
+                item.put(FIELD_DESCRIPTION, desc.asText(null));
+                item.put(FIELD_URL,         fullUrl);
                 arr.add(item);
             }
 
