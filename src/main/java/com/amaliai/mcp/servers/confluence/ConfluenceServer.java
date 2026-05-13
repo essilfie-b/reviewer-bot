@@ -138,9 +138,32 @@ public class ConfluenceServer {
         return confluenceService.getPageChildren(creds.token(), creds.cloudId(), pageId, limit, cursor);
     }
 
-    @Tool(description = "Retrieves the list of file attachments on a Confluence page. "
+    @Tool(description = "Use this tool when the user asks for pages with attachments, files in a space, "
+            + "documents with attachments, or any request to find attachments across a Confluence space. "
+            + "DO NOT use listConfluencePages followed by getConfluenceAttachments in a loop — use this tool instead. "
+            + "Accepts a space name (e.g. 'Amalitech Handbook') or space key (e.g. 'AH', 'ENG') directly — "
+            + "no need to resolve the space key first with listConfluenceSpaces. "
+            + "Returns a JSON object with a 'results' array; each entry contains page metadata "
+            + "(id, title, type, spaceKey, spaceName, url, lastModified) plus an 'attachments' array "
+            + "(id, title, mediaType, fileSize, url, downloadLink, lastModified). "
+            + "Only pages that have at least one attachment are included in the results.")
+    public String getPagesWithAttachments(
+            @ToolParam(description = "The ARMS user ID of the authenticated user") int armsUserId,
+            @ToolParam(description = "Space key or name (e.g. 'ENG', 'Amalitech Handbook')") String spaceKey,
+            @ToolParam(description = "Maximum number of pages to check (default 20, max 50)",
+                    required = false) Integer limit) {
+
+        ConfluenceServerHelper.Credentials creds = ConfluenceServerHelper.resolveCredentials(armsUserId, tokenManager);
+        return confluenceService.getPagesWithAttachments(creds.token(), creds.cloudId(), spaceKey, limit);
+    }
+
+    @Tool(description = "Retrieves the list of file attachments on a single, specific Confluence page. "
+            + "WARNING: Do NOT call this in a loop across multiple pages. "
+            + "If the user wants attachments across a whole space or asks which pages have attachments, "
+            + "use getPagesWithAttachments instead — it handles all pages in one call. "
+            + "Only use this tool when the user is asking about attachments on one specific page they have already identified. "
             + "Returns each attachment's ID, title, media type, file size in bytes, "
-            + "the page it belongs to, a viewable URL, a direct download link, and last-modified date. "
+            + "a viewable URL, a direct download link, and last-modified date. "
             + "Supports cursor-based pagination for pages with many attachments.")
     public String getConfluenceAttachments(
             @ToolParam(description = "The ARMS user ID of the authenticated user") int armsUserId,

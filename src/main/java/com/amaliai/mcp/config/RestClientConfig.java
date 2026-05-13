@@ -39,8 +39,14 @@ public class RestClientConfig {
 
     @Bean
     public RestClient confluenceApiClient() {
+        HttpClient httpClient = HttpClient.newBuilder()
+                .connectTimeout(java.time.Duration.ofSeconds(10))
+                .build();
+        JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(httpClient);
+        factory.setReadTimeout(java.time.Duration.ofSeconds(30));
         return RestClient.builder()
                 .baseUrl("https://api.atlassian.com/ex/confluence")
+                .requestFactory(factory)
                 .defaultHeaders(h -> {
                     h.setContentType(MediaType.APPLICATION_JSON);
                     h.setAccept(List.of(MediaType.APPLICATION_JSON));

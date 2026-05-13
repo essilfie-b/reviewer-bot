@@ -11,8 +11,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 
 /**
@@ -33,7 +37,7 @@ public class ConfluenceService {
     private static final int DEFAULT_LIMIT    = 20;
     private static final int MAX_LIMIT        = 50;
     private static final int MAX_QUERY_LENGTH = 1_000;
-    private static final int DEFAULT_SPACES_LIMIT = 25;
+    private static final int DEFAULT_SPACES_LIMIT = 250;
     private static final int MAX_SPACES_LIMIT = 250;
     private static final Duration SPACE_INFO_CACHE_TTL = Duration.ofHours(24);
 
@@ -154,28 +158,33 @@ public class ConfluenceService {
             throw new IllegalArgumentException("spaceKey must not be empty");
         }
 
-        String normalizedSpaceKey = spaceKey.trim().toUpperCase(Locale.ROOT);
         int effectiveLimit = (limit == null || limit <= 0) ? DEFAULT_LIMIT : Math.min(limit, MAX_LIMIT);
-        log.info("Confluence listPages — cloudId={} spaceKey={} limit={} cursor={}",
-                cloudId, normalizedSpaceKey, effectiveLimit, cursor);
+        log.info("Confluence listPages — cloudId={} spaceKey={} limit={} cursor={}", cloudId, spaceKey.trim(), effectiveLimit, cursor);
 
-        SpaceInfo space = spaceInfoCache.getIfPresent(normalizedSpaceKey);
-        if (space == null) {
-            try {
-                space = ConfluenceServiceUtil.parseSpaceResult(
-                        confluenceClient.getSpaceByKey(token, cloudId, normalizedSpaceKey), normalizedSpaceKey);
-            } catch (ConfluenceOperationException e) {
-                log.info("Space key '{}' not found, falling back to name search for: {}", normalizedSpaceKey, spaceKey.trim());
-                space = ConfluenceServiceUtil.parseSpaceResult(
-                        confluenceClient.listSpaces(token, cloudId, null, null, spaceKey.trim(), DEFAULT_SPACES_LIMIT, null),
-                        spaceKey.trim());
-            }
-            spaceInfoCache.put(normalizedSpaceKey, space);
-        }
+        SpaceInfo space = resolveSpace(token, cloudId, spaceKey);
 
         return ConfluenceServiceUtil.parsePagesListResponse(
                 confluenceClient.listPagesBySpaceId(token, cloudId, space.id(), effectiveLimit, cursor),
                 space.key(), space.name());
+    }
+
+    private SpaceInfo resolveSpace(String token, String cloudId, String spaceKey) {
+        String normalizedKey = spaceKey.trim().toUpperCase(Locale.ROOT);
+        String cacheKey = cloudId + ":" + normalizedKey;
+        SpaceInfo space = spaceInfoCache.getIfPresent(cacheKey);
+        if (space == null) {
+            try {
+                space = ConfluenceServiceUtil.parseSpaceResult(
+                        confluenceClient.getSpaceByKey(token, cloudId, normalizedKey), normalizedKey);
+            } catch (ConfluenceOperationException e) {
+                log.info("Space key '{}' not found, falling back to name search for: {}", normalizedKey, spaceKey.trim());
+                space = ConfluenceServiceUtil.parseSpaceResult(
+                        confluenceClient.listSpaces(token, cloudId, null, null, spaceKey.trim(), DEFAULT_SPACES_LIMIT, null),
+                        spaceKey.trim());
+            }
+            spaceInfoCache.put(cacheKey, space);
+        }
+        return space;
     }
     /**
      * Retrieves details of a single Confluence space by its key.
@@ -197,23 +206,9 @@ public class ConfluenceService {
             throw new IllegalArgumentException("spaceKey must not be empty");
         }
 
-        String normalizedSpaceKey = spaceKey.trim().toUpperCase(Locale.ROOT);
-        log.info("Confluence getSpace — cloudId={} spaceKey={}", cloudId, normalizedSpaceKey);
+        log.info("Confluence getSpace — cloudId={} spaceKey={}", cloudId, spaceKey.trim().toUpperCase(Locale.ROOT));
 
-        SpaceInfo space = spaceInfoCache.getIfPresent(normalizedSpaceKey);
-        if (space == null) {
-            try {
-                space = ConfluenceServiceUtil.parseSpaceResult(
-                        confluenceClient.getSpaceByKey(token, cloudId, normalizedSpaceKey), normalizedSpaceKey);
-            } catch (ConfluenceOperationException e) {
-                log.info("Space key '{}' not found, falling back to name search for: {}", normalizedSpaceKey, spaceKey.trim());
-                space = ConfluenceServiceUtil.parseSpaceResult(
-                        confluenceClient.listSpaces(token, cloudId, null, null, spaceKey.trim(), DEFAULT_SPACES_LIMIT, null),
-                        spaceKey.trim());
-            }
-            spaceInfoCache.put(normalizedSpaceKey, space);
-        }
-
+        SpaceInfo space = resolveSpace(token, cloudId, spaceKey);
         String raw = confluenceClient.getSpace(token, cloudId, space.id());
         return ConfluenceServiceUtil.parseSpaceResponse(raw);
     }
@@ -273,6 +268,38 @@ public class ConfluenceService {
 
         String raw = confluenceClient.getAttachments(token, cloudId, pageId, effectiveLimit, cursor);
         return ConfluenceServiceUtil.parseAttachmentsResponse(raw);
+    }
+
+    /**
+     * Returns all pages in a Confluence space that have at least one file attachment,
+     * with each page's attachment list embedded in the response.
+     * Avoids the N+1 pattern of calling getAttachments for every page individually.
+     *
+     * @param token    the user's Confluence access token
+     * @param cloudId  the Atlassian cloud ID for the user's tenant
+     * @param spaceKey space key or display name (e.g. "ENG" or "Amalitech Handbook")
+     * @param limit    maximum pages to inspect; clamped to [{@value DEFAULT_LIMIT}, {@value MAX_LIMIT}]
+     * @return JSON object with {@code results} — array of page objects each containing an {@code attachments} array
+     */
+    public String getPagesWithAttachments(String token, String cloudId, String spaceKey, Integer limit) {
+        if (spaceKey == null || spaceKey.isBlank()) {
+            throw new IllegalArgumentException("spaceKey must not be empty");
+        }
+
+        int effectiveLimit = (limit == null || limit <= 0) ? DEFAULT_LIMIT : Math.min(limit, MAX_LIMIT);
+        log.info("Confluence getPagesWithAttachments — cloudId={} spaceKey={} limit={}", cloudId, spaceKey.trim(), effectiveLimit);
+
+        SpaceInfo space = resolveSpace(token, cloudId, spaceKey);
+        String pagesRaw = confluenceClient.listPagesBySpaceId(token, cloudId, space.id(), effectiveLimit, null);
+        List<String> pageIds = ConfluenceServiceUtil.extractPageIds(pagesRaw);
+
+        Map<String, String> attachmentRawByPageId = pageIds.parallelStream()
+                .collect(Collectors.toConcurrentMap(
+                        Function.identity(),
+                        pageId -> confluenceClient.getAttachments(token, cloudId, pageId, MAX_LIMIT, null)));
+
+        return ConfluenceServiceUtil.buildPagesWithAttachmentsResponse(
+                pagesRaw, space.key(), space.name(), attachmentRawByPageId);
     }
 
     /**
