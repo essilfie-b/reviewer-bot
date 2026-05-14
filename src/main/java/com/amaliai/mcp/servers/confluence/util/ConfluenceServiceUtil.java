@@ -7,9 +7,15 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
+
+@Slf4j
 @Component
 public class ConfluenceServiceUtil {
 
@@ -53,6 +59,7 @@ public class ConfluenceServiceUtil {
     private static final String TYPE_PAGE           = "page";
     private static final String FIELD_MEDIA_TYPE    = "mediaType";
     private static final String FIELD_FILE_SIZE     = "fileSize";
+    private static final String FIELD_VIEW          = "view";
 
     /**
      * Builds a CQL expression for a full-text page search, optionally scoped to
@@ -61,7 +68,11 @@ public class ConfluenceServiceUtil {
      * Double-quotes inside the query are escaped to prevent CQL injection.
      */
     public static String buildCql(String query, String spaceKey) {
-        String safeQuery = query.replace("\"", "\\\"");
+        String safeQuery = query
+                .replace("\\", "")
+                .replace("\"", "\\\"")
+                .replace("*", "")
+                .replace("?", "");
         StringBuilder cql = new StringBuilder("type=page AND text~\"").append(safeQuery).append('"');
         if (spaceKey != null && !spaceKey.isBlank()) {
             String safeSpace = spaceKey.replace("\"", "\\\"");
@@ -363,7 +374,8 @@ public class ConfluenceServiceUtil {
             String spaceKey = extractSpaceKeyFromWebuiUrl(root.path(FIELD_LINKS).path(FIELD_WEBUI).asText(null));
             ObjectNode item = buildV2PageNode(root, spaceKey, null, null);
 
-            String  plainText = stripHtml(root.path(FIELD_BODY).path(FIELD_VALUE).asText(""));
+            String  plainText = stripHtml(root.path(FIELD_BODY).path(FIELD_VIEW).path(FIELD_VALUE).asText(""));
+
             boolean truncated = plainText.length() > MAX_CONTENT_CHARS;
 
             item.put(FIELD_CONTENT,   truncated ? plainText.substring(0, MAX_CONTENT_CHARS) : plainText);
@@ -514,6 +526,89 @@ public class ConfluenceServiceUtil {
             return OBJECT_MAPPER.writeValueAsString(out);
         } catch (JsonProcessingException e) {
             throw new ConfluenceOperationException("Failed to parse Confluence spaces list response", e);
+        }
+    }
+
+    /**
+     * Extracts the list of page IDs from a v2 pages-list response body.
+     * Used by batch operations that need to iterate page IDs before assembling output.
+     */
+    public static List<String> extractPageIds(String responseBody) {
+        try {
+            List<String> ids = new ArrayList<>();
+            OBJECT_MAPPER.readTree(responseBody).path(FIELD_RESULTS).forEach(page -> {
+                String id = page.path(FIELD_ID).asText(null);
+                if (id != null) ids.add(id);
+            });
+            return ids;
+        } catch (JsonProcessingException e) {
+            throw new ConfluenceOperationException("Failed to extract page IDs from Confluence response", e);
+        }
+    }
+
+    /**
+     * Builds a JSON object where each page that has attachments appears in a {@code results}
+     * array, with its standard v2 page fields plus an {@code attachments} array.
+     *
+     * @param pagesRaw             raw JSON from {@code GET /wiki/api/v2/pages?space-id=...}
+     * @param spaceKey             resolved space key to stamp on each page node
+     * @param spaceName            resolved space display name to stamp on each page node
+     * @param attachmentRawByPageId map of pageId → raw JSON from {@code /pages/{id}/attachments}
+     */
+    public static String buildPagesWithAttachmentsResponse(
+            String pagesRaw, String spaceKey, String spaceName,
+            Map<String, String> attachmentRawByPageId) {
+        try {
+            JsonNode pagesRoot = OBJECT_MAPPER.readTree(pagesRaw);
+            String baseUrl = pagesRoot.path(FIELD_LINKS).path(FIELD_BASE).asText(null);
+            ArrayNode results = OBJECT_MAPPER.createArrayNode();
+
+            for (JsonNode page : pagesRoot.path(FIELD_RESULTS)) {
+                String pageId = page.path(FIELD_ID).asText(null);
+                if (pageId == null) continue;
+
+                String attRaw = attachmentRawByPageId.get(pageId);
+                if (attRaw == null) continue;
+
+                ArrayNode attArray = parseAttachmentsArray(attRaw, baseUrl);
+                if (attArray.isEmpty()) continue;
+
+                ObjectNode pageNode = buildV2PageNode(page, spaceKey, spaceName, baseUrl);
+                pageNode.set("attachments", attArray);
+                results.add(pageNode);
+            }
+
+            ObjectNode out = OBJECT_MAPPER.createObjectNode();
+            out.set(FIELD_RESULTS, results);
+            return OBJECT_MAPPER.writeValueAsString(out);
+        } catch (JsonProcessingException e) {
+            throw new ConfluenceOperationException("Failed to build pages with attachments response", e);
+        }
+    }
+
+    private static ArrayNode parseAttachmentsArray(String responseBody, String fallbackBaseUrl) {
+        try {
+            JsonNode root = OBJECT_MAPPER.readTree(responseBody);
+            String baseUrl = root.path(FIELD_LINKS).path(FIELD_BASE).asText(fallbackBaseUrl);
+            ArrayNode output = OBJECT_MAPPER.createArrayNode();
+
+            for (JsonNode result : root.path(FIELD_RESULTS)) {
+                String webuiLink   = result.path("webuiLink").asText(null);
+                String downloadLink = result.path("downloadLink").asText(null);
+
+                ObjectNode item = OBJECT_MAPPER.createObjectNode();
+                item.put(FIELD_ID,            result.path(FIELD_ID).asText(null));
+                item.put(FIELD_TITLE,         result.path(FIELD_TITLE).asText(null));
+                item.put(FIELD_MEDIA_TYPE,    result.path(FIELD_MEDIA_TYPE).asText(null));
+                item.put(FIELD_FILE_SIZE,     result.path(FIELD_FILE_SIZE).asLong(0));
+                item.put(FIELD_URL,           webuiLink != null ? baseUrl + webuiLink : null);
+                item.put("downloadLink",      downloadLink != null ? baseUrl + downloadLink : null);
+                item.put(FIELD_LAST_MODIFIED, result.path(FIELD_VERSION).path(FIELD_CREATED_AT).asText(null));
+                output.add(item);
+            }
+            return output;
+        } catch (JsonProcessingException e) {
+            throw new ConfluenceOperationException("Failed to parse Confluence attachments array", e);
         }
     }
 
