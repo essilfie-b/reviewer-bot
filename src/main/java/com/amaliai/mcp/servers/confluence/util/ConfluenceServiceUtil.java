@@ -59,6 +59,7 @@ public class ConfluenceServiceUtil {
     private static final String TYPE_PAGE           = "page";
     private static final String FIELD_MEDIA_TYPE    = "mediaType";
     private static final String FIELD_FILE_SIZE     = "fileSize";
+    private static final String FIELD_VIEW          = "view";
 
     /**
      * Builds a CQL expression for a full-text page search, optionally scoped to
@@ -373,7 +374,8 @@ public class ConfluenceServiceUtil {
             String spaceKey = extractSpaceKeyFromWebuiUrl(root.path(FIELD_LINKS).path(FIELD_WEBUI).asText(null));
             ObjectNode item = buildV2PageNode(root, spaceKey, null, null);
 
-            String  plainText = stripHtml(root.path(FIELD_BODY).path(FIELD_VALUE).asText(""));
+            String  plainText = stripHtml(root.path(FIELD_BODY).path(FIELD_VIEW).path(FIELD_VALUE).asText(""));
+
             boolean truncated = plainText.length() > MAX_CONTENT_CHARS;
 
             item.put(FIELD_CONTENT,   truncated ? plainText.substring(0, MAX_CONTENT_CHARS) : plainText);
