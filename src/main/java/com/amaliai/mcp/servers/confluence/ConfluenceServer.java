@@ -73,10 +73,11 @@ public class ConfluenceServer {
             + "Returns each page's ID, title, type, space key, space name, and URL. "
             + "Supports cursor-based pagination for spaces with many pages. "
             + "Does NOT return page content — use getConfluencePageContent to read a specific page. "
-            + "Use the space key visible in Confluence URLs (e.g. 'ENG', 'LMS', 'AED').")
+            + "Accepts a space key (e.g. 'ENG', 'LMS') or the full space name (e.g. 'HR_IT', 'Amalitech Handbook') — "
+            + "pass the value exactly as the user provides it.")
     public String listConfluencePages(
             @ToolParam(description = "The ARMS user ID of the authenticated user") int armsUserId,
-            @ToolParam(description = "The Confluence space key to list pages from (e.g. 'ENG', 'LMS')") String spaceKey,
+            @ToolParam(description = "Space key (e.g. 'ENG') or full space name (e.g. 'HR_IT', 'Amalitech Handbook') — pass exactly as the user provided it") String spaceKey,
             @ToolParam(description = "Maximum number of pages to return (default 20, max 50)",
                     required = false) Integer limit,
             @ToolParam(description = "Opaque pagination cursor from a previous response's nextCursor (optional)",
@@ -86,13 +87,15 @@ public class ConfluenceServer {
         return confluenceService.listPages(creds.token(), creds.cloudId(), spaceKey, limit, cursor);
     }
 
-    @Tool(description = "Retrieves details for a single Confluence space by its key. "
+    @Tool(description = "Retrieves details for a single Confluence space. "
             + "Returns the space's ID, key, name, type (global/personal/collaboration/knowledge_base), "
             + "status (current/archived), author ID, creation timestamp, homepage ID, "
-            + "plain-text description, and web URL.")
+            + "plain-text description, and web URL. "
+            + "Accepts a space key (e.g. 'ENG', 'AH') or the full space name (e.g. 'HR_IT', 'Amalitech Handbook') — "
+            + "pass the value exactly as the user provides it.")
     public String getConfluenceSpace(
             @ToolParam(description = "The ARMS user ID of the authenticated user") int armsUserId,
-            @ToolParam(description = "The Confluence space key to fetch (e.g. 'ENG', 'LMS')") String spaceKey) {
+            @ToolParam(description = "Space key (e.g. 'ENG') or full space name (e.g. 'HR_IT', 'Amalitech Handbook') — pass exactly as the user provided it") String spaceKey) {
 
         ConfluenceServerHelper.Credentials creds = ConfluenceServerHelper.resolveCredentials(armsUserId, tokenManager);
         return confluenceService.getSpace(creds.token(), creds.cloudId(), spaceKey);

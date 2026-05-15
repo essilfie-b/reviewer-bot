@@ -244,12 +244,29 @@ public class ConfluenceServiceUtil {
             if (!results.isArray() || results.isEmpty()) {
                 throw new ConfluenceOperationException("No Confluence space found for key: " + fallbackKey, null);
             }
-            JsonNode space = results.get(0);
-            return new SpaceInfo(
-                    space.path(FIELD_ID).asText(null),
-                    space.path(FIELD_KEY).asText(fallbackKey),
-                    space.path(FIELD_NAME).asText(null)
-            );
+            // Single result: caller used getSpaceByKey which already filtered by exact key.
+            if (results.size() == 1) {
+                JsonNode space = results.get(0);
+                return new SpaceInfo(
+                        space.path(FIELD_ID).asText(null),
+                        space.path(FIELD_KEY).asText(fallbackKey),
+                        space.path(FIELD_NAME).asText(null)
+                );
+            }
+            // Multiple results: the Confluence v2 API ignores the ?query param, so the full
+            // space list is returned. Find the entry whose name or key matches the input.
+            for (JsonNode space : results) {
+                String name = space.path(FIELD_NAME).asText("");
+                String key  = space.path(FIELD_KEY).asText("");
+                if (name.equalsIgnoreCase(fallbackKey) || key.equalsIgnoreCase(fallbackKey)) {
+                    return new SpaceInfo(
+                            space.path(FIELD_ID).asText(null),
+                            key.isEmpty() ? fallbackKey : key,
+                            name.isEmpty() ? null : name
+                    );
+                }
+            }
+            throw new ConfluenceOperationException("No Confluence space found for key: " + fallbackKey, null);
         } catch (JsonProcessingException e) {
             throw new ConfluenceOperationException("Failed to parse Confluence space response", e);
         }
