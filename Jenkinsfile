@@ -2,9 +2,13 @@ def appname = 'amali-ai'
 def deploy_group_dev = 'mcp-dev'
 def deploy_group_prod = 'mcp-prod'
 def s3_bucket = 'amali-ai-src-bucket'
+def devS3Bucket = 'amali-ai-src-bucket-dev'
 def s3_filename = 'amaliai-codedeploy-src-mcp'
 def imageRegistry = '867344436491.dkr.ecr.eu-west-1.amazonaws.com'
+def devImageRegistry = '160450754406.dkr.ecr.eu-west-1.amazonaws.com'
 def awsRegion = 'eu-west-1'
+def awsCreds = 'ai-aws-cred'
+def devAwsCreds = 'ai-aws-cred-dev'
 
 pipeline {
   agent any
@@ -41,22 +45,24 @@ pipeline {
         }
       }
       steps {
-        withAWS(region: awsRegion, credentials: 'ai-aws-cred') {
-          script {
+        script {
+          def isProd = env.BRANCH_NAME == 'main'
+          def activeCreds = isProd ? awsCreds : devAwsCreds
+          withAWS(region: awsRegion, credentials: activeCreds) {
             def gitSha = sh(
               script: 'git log -n1 --format=format:"%H"',
               returnStdout: true
             ).trim()
 
-            def isProd = env.BRANCH_NAME == 'main'
             def envName = isProd ? 'prod' : 'dev'
             def imageName = "ai-mcp-${envName}"
+            def activeRegistry = isProd ? imageRegistry : devImageRegistry
 
-            env.imageTag = "${imageRegistry}/${imageName}:${gitSha}"
+            env.imageTag = "${activeRegistry}/${imageName}:${gitSha}"
 
             sh """
               docker build -t ${env.imageTag} .
-              aws ecr get-login-password --region ${awsRegion} | docker login --username AWS --password-stdin ${imageRegistry}
+              aws ecr get-login-password --region ${awsRegion} | docker login --username AWS --password-stdin ${activeRegistry}
               docker push ${env.imageTag}
               docker logout
               docker rmi ${env.imageTag}
@@ -75,9 +81,12 @@ pipeline {
       }
       steps {
         script {
+          def isProd = env.BRANCH_NAME == 'main'
+          def activeRegistry = isProd ? imageRegistry : devImageRegistry
+
           sh """
             chmod +x scripts/update-deployment-artifact.sh
-            ./scripts/update-deployment-artifact.sh ${env.imageTag}
+            ./scripts/update-deployment-artifact.sh ${env.imageTag} ${activeRegistry}
           """
 
           sh '''
@@ -98,8 +107,10 @@ pipeline {
         }
       }
       steps {
-        withAWS(region: awsRegion, credentials: 'ai-aws-cred') {
-          script {
+        script {
+          def isProd = env.BRANCH_NAME == 'main'
+          def activeCreds = isProd ? awsCreds : devAwsCreds
+          withAWS(region: awsRegion, credentials: activeCreds) {
             def gitSha = sh(
               script: 'git log -n1 --format=format:"%H"',
               returnStdout: true
@@ -108,12 +119,14 @@ pipeline {
             def versionedFile = "${s3_filename}-${gitSha}"
             env.DEPLOY_FILE = versionedFile
 
+            def activeS3Bucket = isProd ? s3_bucket : devS3Bucket
+
             sh """
               aws deploy push \
                 --application-name ${appname} \
                 --description "Revision ${appname}-${gitSha}" \
                 --ignore-hidden-files \
-                --s3-location s3://${s3_bucket}/${versionedFile}.zip \
+                --s3-location s3://${activeS3Bucket}/${versionedFile}.zip \
                 --source artifact/
             """
           }
@@ -124,14 +137,14 @@ pipeline {
     stage('Deploy to Development') {
       when { branch 'develop' }
       steps {
-        withAWS(region: awsRegion, credentials: 'ai-aws-cred') {
+        withAWS(region: awsRegion, credentials: devAwsCreds) {
           sh """
             aws deploy create-deployment \
               --application-name ${appname} \
               --deployment-config-name CodeDeployDefault.OneAtATime \
               --deployment-group-name ${deploy_group_dev} \
               --file-exists-behavior OVERWRITE \
-              --s3-location bucket=${s3_bucket},key=${env.DEPLOY_FILE}.zip,bundleType=zip
+              --s3-location bucket=${devS3Bucket},key=${env.DEPLOY_FILE}.zip,bundleType=zip
           """
         }
       }
@@ -140,7 +153,7 @@ pipeline {
     stage('Deploy to Production') {
       when { branch 'main' }
       steps {
-        withAWS(region: awsRegion, credentials: 'ai-aws-cred') {
+        withAWS(region: awsRegion, credentials: awsCreds) {
           sh """
             aws deploy create-deployment \
               --application-name ${appname} \
