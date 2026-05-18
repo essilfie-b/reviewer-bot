@@ -173,13 +173,26 @@ public class ConfluenceService {
         String cacheKey = cloudId + ":" + normalizedKey;
         SpaceInfo space = spaceInfoCache.getIfPresent(cacheKey);
         if (space == null) {
+            // Try exact key first, then sanitized key (strips underscores/spaces e.g. HR_IT → HRIT)
+            String sanitizedKey = normalizedKey.replaceAll("[^A-Z0-9]", "");
             try {
                 space = ConfluenceServiceUtil.parseSpaceResult(
                         confluenceClient.getSpaceByKey(token, cloudId, normalizedKey), normalizedKey);
             } catch (ConfluenceOperationException e) {
-                log.info("Space key '{}' not found, falling back to name search for: {}", normalizedKey, spaceKey.trim());
+                if (!sanitizedKey.equals(normalizedKey)) {
+                    try {
+                        space = ConfluenceServiceUtil.parseSpaceResult(
+                                confluenceClient.getSpaceByKey(token, cloudId, sanitizedKey), sanitizedKey);
+                    } catch (ConfluenceOperationException ignored) {
+                        // fall through to name search
+                    }
+                }
+            }
+            // Fall back to fetching all spaces and matching by name or key client-side
+            if (space == null) {
+                log.info("Space key '{}' not found by key lookup, falling back to full name search for: {}", normalizedKey, spaceKey.trim());
                 space = ConfluenceServiceUtil.parseSpaceResult(
-                        confluenceClient.listSpaces(token, cloudId, null, null, spaceKey.trim(), DEFAULT_SPACES_LIMIT, null),
+                        confluenceClient.listSpaces(token, cloudId, null, null, null, DEFAULT_SPACES_LIMIT, null),
                         spaceKey.trim());
             }
             spaceInfoCache.put(cacheKey, space);
