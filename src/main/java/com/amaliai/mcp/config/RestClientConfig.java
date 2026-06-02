@@ -38,6 +38,23 @@ public class RestClientConfig {
   }
 
     @Bean
+    public RestClient confluenceApiClient() {
+        HttpClient httpClient = HttpClient.newBuilder()
+                .connectTimeout(java.time.Duration.ofSeconds(10))
+                .build();
+        JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(httpClient);
+        factory.setReadTimeout(java.time.Duration.ofSeconds(30));
+        return RestClient.builder()
+                .baseUrl("https://api.atlassian.com/ex/confluence")
+                .requestFactory(factory)
+                .defaultHeaders(h -> {
+                    h.setContentType(MediaType.APPLICATION_JSON);
+                    h.setAccept(List.of(MediaType.APPLICATION_JSON));
+                })
+                .build();
+    }
+
+    @Bean
     public RestClient graphClient() {
         // Graph API's /content endpoint returns a 302 redirect to a CDN download URL.
         // Java's HttpClient defaults to Redirect.NEVER, so we must opt in to Redirect.NORMAL.
