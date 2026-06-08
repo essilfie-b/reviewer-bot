@@ -37,6 +37,10 @@ import static com.amaliai.mcp.servers.sharepoint.SharePointConstants.*;
 public class SharePointService {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final String METADATA_CONTEXT_PREFIX = "item metadata for itemId=";
+    private static final String FIELD_WEB_URL = "webUrl";
+    private static final String FIELD_FILE_TYPE = "fileType";
+    private static final String FIELD_SIZE_BYTES = "sizeBytes";
 
     private final SharePointGraphClient      graphClient;
     private final DriveItemParser            driveItemParser;
@@ -99,90 +103,21 @@ public class SharePointService {
      *                                  oversized files, or when no text can be extracted
      */
     public String getDocumentContent(String token, String itemId) {
-        if (itemId == null || itemId.isBlank()) {
-            throw new IllegalArgumentException("itemId must not be empty");
-        }
+        validateItemId(itemId);
 
-        // Step 1 — fetch metadata to validate type and size before downloading
-        JsonNode metadata = parseJson(graphClient.fetchItemMetadata(token, itemId),
-                "item metadata for itemId=" + itemId);
-        String name      = metadata.path("name").asText("");
-        long   sizeBytes = metadata.path("size").asLong(0L);
-        String ext       = fileExtension(name);
+        ExtractedDocumentMetadata metadata = fetchDocumentMetadata(token, itemId);
+        validateDocumentForExtraction(metadata);
 
-        String webUrl = metadata.path("webUrl").asText(null);
+        byte[] bytes = downloadDocumentContent(token, itemId, metadata.name());
+        String rawText = extractTextOrThrow(bytes, metadata.name(), metadata.sizeBytes());
 
-        // Extract Site, Library, and Folder details
-        String site = null;
-        String library = null;
-        String folder = null;
-
-        JsonNode parentReference = metadata.path("parentReference");
-        if (!parentReference.isMissingNode()) {
-            library = parentReference.path("name").asText(null);
-            String path = parentReference.path("path").asText("");
-            if (path.contains("/root:")) {
-                String[] parts = path.split("/root:");
-                if (parts.length > 1) {
-                    folder = parts[1].startsWith("/") ? parts[1].substring(1) : parts[1];
-                }
-            }
-            if (webUrl != null && webUrl.contains("/sites/")) {
-                String[] urlParts = webUrl.split("/sites/");
-                if (urlParts.length > 1) {
-                    site = urlParts[1].split("/")[0];
-                }
-            }
-        }
-
-        String typeError = validator.validateContentType(ext);
-        if (typeError != null) throw new IllegalArgumentException(typeError);
-
-        if (sizeBytes > MAX_FILE_SIZE_BYTES) {
-            throw new IllegalArgumentException(
-                    "File is too large (" + (sizeBytes / (1_024 * 1_024)) + " MB). Maximum is 10 MB.");
-        }
-
-        // Step 2 — download (graphClient follows the 302 → CDN redirect automatically)
-        byte[] bytes = graphClient.downloadItemContent(token, itemId);
-        if (bytes == null || bytes.length == 0) {
-            log.warn("Downloaded file '{}' (itemId={}) returned an empty body", name, itemId);
-            throw new IllegalArgumentException("Downloaded file is empty");
-        }
-        log.info("Downloaded '{}' (itemId={}) — {} bytes", name, itemId, bytes.length);
-
-        // Step 3 — extract text
-        String rawText = contentExtractor.extractText(bytes, name);
-        log.info("Extracted {} characters from '{}' (stored size: {} bytes)", rawText.length(), name, sizeBytes);
-
-        if (rawText.isBlank()) {
-            throw new IllegalArgumentException(
-                    "No text could be extracted from '" + name + "'. "
-                    + "The file may be a scanned image (no text layer) or the format is unsupported.");
-        }
-
-        // Step 4 — truncate if necessary and build response
-        boolean truncated = rawText.getBytes(StandardCharsets.UTF_8).length > MAX_CONTENT_BYTES;
+        boolean truncated = isTruncated(rawText);
         String content = truncated ? responseUtil.trimResponse(rawText, MAX_CONTENT_BYTES) : rawText;
 
         log.info("Content ready for '{}': {} bytes, truncated={}",
-                name, content.getBytes(StandardCharsets.UTF_8).length, truncated);
+                metadata.name(), content.getBytes(StandardCharsets.UTF_8).length, truncated);
 
-        ObjectNode result = OBJECT_MAPPER.createObjectNode();
-        result.put("name",      name);
-        result.put("fileType",  ext);
-        result.put("sizeBytes", sizeBytes);
-        result.put("url",       webUrl);
-        result.put("site",      site);
-        result.put("library",   library);
-        result.put("folder",    folder);
-        result.put("truncated", truncated);
-        result.put("content",   content);
-        try {
-            return OBJECT_MAPPER.writeValueAsString(result);
-        } catch (JsonProcessingException e) {
-            throw new SharePointOperationException("Failed to serialize document content response", e);
-        }
+        return buildDocumentContentResponse(metadata, content, truncated);
     }
 
     /**
@@ -196,7 +131,7 @@ public class SharePointService {
         }
 
         String raw = graphClient.fetchItemFullMetadata(token, itemId);
-        JsonNode item = parseJson(raw, "item metadata for itemId=" + itemId);
+        JsonNode item = parseJson(raw, METADATA_CONTEXT_PREFIX + itemId);
 
         String name = item.path("name").asText("");
         int dot = name.lastIndexOf('.');
@@ -204,10 +139,10 @@ public class SharePointService {
 
         ObjectNode result = OBJECT_MAPPER.createObjectNode();
         result.put("name",                 name);
-        result.put("fileType",             fileType.isEmpty() ? null : fileType);
+        result.put(FIELD_FILE_TYPE,         fileType.isEmpty() ? null : fileType);
         result.put("mimeType",             item.path("file").path("mimeType").asText(null));
-        result.put("sizeBytes",            item.path("size").asLong(0L));
-        result.put("webUrl",               item.path("webUrl").asText(null));
+        result.put(FIELD_SIZE_BYTES,        item.path("size").asLong(0L));
+        result.put(FIELD_WEB_URL,           item.path(FIELD_WEB_URL).asText(null));
         result.put("createdBy",            item.path("createdBy").path("user").path("displayName").asText(null));
         result.put("createdDateTime",      item.path("createdDateTime").asText(null));
         result.put("lastModifiedBy",       item.path("lastModifiedBy").path("user").path("displayName").asText(null));
@@ -235,7 +170,7 @@ public class SharePointService {
 
         // Fetch metadata so we can include humanly useful info alongside the URL
         JsonNode metadata = parseJson(graphClient.fetchItemFullMetadata(token, itemId),
-                "item metadata for itemId=" + itemId);
+                METADATA_CONTEXT_PREFIX + itemId);
 
         String name     = metadata.path("name").asText("");
         String mimeType = metadata.path("file").path("mimeType").asText(null);
@@ -256,9 +191,9 @@ public class SharePointService {
 
         ObjectNode result = OBJECT_MAPPER.createObjectNode();
         result.put("name",        name);
-        result.put("fileType",    ext.isEmpty() ? null : ext);
+        result.put(FIELD_FILE_TYPE, ext.isEmpty() ? null : ext);
         result.put("mimeType",    mimeType);
-        result.put("sizeBytes",   size);
+        result.put(FIELD_SIZE_BYTES, size);
         result.put("downloadUrl", forceDownloadUrl);
 
         try {
@@ -319,6 +254,111 @@ public class SharePointService {
     // Private helpers
     // -------------------------------------------------------------------------
 
+    private static void validateItemId(String itemId) {
+        if (itemId == null || itemId.isBlank()) {
+            throw new IllegalArgumentException("itemId must not be empty");
+        }
+    }
+
+    private ExtractedDocumentMetadata fetchDocumentMetadata(String token, String itemId) {
+        JsonNode metadata = parseJson(graphClient.fetchItemMetadata(token, itemId),
+                METADATA_CONTEXT_PREFIX + itemId);
+        String name = metadata.path("name").asText("");
+        long sizeBytes = metadata.path("size").asLong(0L);
+        String extension = fileExtension(name);
+        String webUrl = metadata.path(FIELD_WEB_URL).asText(null);
+        DocumentLocation location = extractDocumentLocation(metadata.path("parentReference"), webUrl);
+        return new ExtractedDocumentMetadata(name, sizeBytes, extension, webUrl, location);
+    }
+
+    private static DocumentLocation extractDocumentLocation(JsonNode parentReference, String webUrl) {
+        if (parentReference.isMissingNode()) {
+            return new DocumentLocation(null, null, null);
+        }
+
+        String library = parentReference.path("name").asText(null);
+        String folder = extractFolder(parentReference.path("path").asText(""));
+        String site = extractSite(webUrl);
+        return new DocumentLocation(site, library, folder);
+    }
+
+    private static String extractFolder(String path) {
+        if (!path.contains("/root:")) {
+            return null;
+        }
+        String[] parts = path.split("/root:", 2);
+        if (parts.length < 2 || parts[1].isBlank()) {
+            return null;
+        }
+        return parts[1].startsWith("/") ? parts[1].substring(1) : parts[1];
+    }
+
+    private static String extractSite(String webUrl) {
+        if (webUrl == null || !webUrl.contains("/sites/")) {
+            return null;
+        }
+        String[] urlParts = webUrl.split("/sites/", 2);
+        if (urlParts.length < 2 || urlParts[1].isBlank()) {
+            return null;
+        }
+        return urlParts[1].split("/")[0];
+    }
+
+    private void validateDocumentForExtraction(ExtractedDocumentMetadata metadata) {
+        String typeError = validator.validateContentType(metadata.extension());
+        if (typeError != null) {
+            throw new IllegalArgumentException(typeError);
+        }
+        if (metadata.sizeBytes() > MAX_FILE_SIZE_BYTES) {
+            throw new IllegalArgumentException(
+                    "File is too large (" + (metadata.sizeBytes() / (1_024 * 1_024)) + " MB). Maximum is 10 MB.");
+        }
+    }
+
+    private byte[] downloadDocumentContent(String token, String itemId, String name) {
+        byte[] bytes = graphClient.downloadItemContent(token, itemId);
+        if (bytes == null || bytes.length == 0) {
+            log.warn("Downloaded file '{}' (itemId={}) returned an empty body", name, itemId);
+            throw new IllegalArgumentException("Downloaded file is empty");
+        }
+        log.info("Downloaded '{}' (itemId={}) — {} bytes", name, itemId, bytes.length);
+        return bytes;
+    }
+
+    private String extractTextOrThrow(byte[] bytes, String name, long sizeBytes) {
+        String rawText = contentExtractor.extractText(bytes, name);
+        log.info("Extracted {} characters from '{}' (stored size: {} bytes)", rawText.length(), name, sizeBytes);
+
+        if (rawText.isBlank()) {
+            throw new IllegalArgumentException(
+                    "No text could be extracted from '" + name + "'. "
+                            + "The file may be a scanned image (no text layer) or the format is unsupported.");
+        }
+        return rawText;
+    }
+
+    private static boolean isTruncated(String rawText) {
+        return rawText.getBytes(StandardCharsets.UTF_8).length > MAX_CONTENT_BYTES;
+    }
+
+    private String buildDocumentContentResponse(ExtractedDocumentMetadata metadata, String content, boolean truncated) {
+        ObjectNode result = OBJECT_MAPPER.createObjectNode();
+        result.put("name", metadata.name());
+        result.put(FIELD_FILE_TYPE, metadata.extension());
+        result.put(FIELD_SIZE_BYTES, metadata.sizeBytes());
+        result.put("url", metadata.webUrl());
+        result.put("site", metadata.location().site());
+        result.put("library", metadata.location().library());
+        result.put("folder", metadata.location().folder());
+        result.put("truncated", truncated);
+        result.put("content", content);
+        try {
+            return OBJECT_MAPPER.writeValueAsString(result);
+        } catch (JsonProcessingException e) {
+            throw new SharePointOperationException("Failed to serialize document content response", e);
+        }
+    }
+
     private static String fileExtension(String name) {
         int dot = name.lastIndexOf('.');
         return dot >= 0 ? name.substring(dot + 1).toLowerCase() : "";
@@ -344,7 +384,7 @@ public class SharePointService {
                 parsed.put("id", site.path("id").asText(null));
                 parsed.put("name", site.path("name").asText(null));
                 parsed.put("displayName", site.path("displayName").asText(null));
-                parsed.put("webUrl", site.path("webUrl").asText(null));
+                parsed.put(FIELD_WEB_URL, site.path(FIELD_WEB_URL).asText(null));
                 parsed.put("description", site.path("description").asText(null));
                 parsed.put("createdDateTime", site.path("createdDateTime").asText(null));
                 parsed.put("lastModifiedDateTime", site.path("lastModifiedDateTime").asText(null));
@@ -365,7 +405,7 @@ public class SharePointService {
             result.put("id", site.path("id").asText(null));
             result.put("name", site.path("name").asText(null));
             result.put("displayName", site.path("displayName").asText(null));
-            result.put("webUrl", site.path("webUrl").asText(null));
+            result.put(FIELD_WEB_URL, site.path(FIELD_WEB_URL).asText(null));
             result.put("description", site.path("description").asText(null));
             result.put("createdDateTime", site.path("createdDateTime").asText(null));
             result.put("lastModifiedDateTime", site.path("lastModifiedDateTime").asText(null));
@@ -387,7 +427,7 @@ public class SharePointService {
                 parsed.put("id", drive.path("id").asText(null));
                 parsed.put("name", drive.path("name").asText(null));
                 parsed.put("description", drive.path("description").asText(null));
-                parsed.put("webUrl", drive.path("webUrl").asText(null));
+                parsed.put(FIELD_WEB_URL, drive.path(FIELD_WEB_URL).asText(null));
                 parsed.put("driveType", drive.path("driveType").asText(null));
                 parsed.put("createdDateTime", drive.path("createdDateTime").asText(null));
                 parsed.put("lastModifiedDateTime", drive.path("lastModifiedDateTime").asText(null));
@@ -411,4 +451,9 @@ public class SharePointService {
             throw new SharePointOperationException("Failed to parse Graph API libraries response", e);
         }
     }
+
+    private record DocumentLocation(String site, String library, String folder) {}
+
+    private record ExtractedDocumentMetadata(String name, long sizeBytes, String extension,
+                                             String webUrl, DocumentLocation location) {}
 }
