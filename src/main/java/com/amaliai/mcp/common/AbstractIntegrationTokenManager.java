@@ -150,7 +150,6 @@ public abstract class AbstractIntegrationTokenManager {
         } catch (IllegalArgumentException e) {
             throw e;
         } catch (Exception e) {
-            log.error("{} token decryption failed", integrationType, e);
             throw new IllegalStateException("Token decryption failed for " + integrationType, e);
         }
     }

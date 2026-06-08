@@ -8,7 +8,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,9 +15,9 @@ import java.util.Map;
 
 
 @Slf4j
-@Component
 public class ConfluenceServiceUtil {
 
+    private ConfluenceServiceUtil(){};
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     /**
      * Maximum number of characters returned in a page body.
@@ -60,6 +59,9 @@ public class ConfluenceServiceUtil {
     private static final String FIELD_MEDIA_TYPE    = "mediaType";
     private static final String FIELD_FILE_SIZE     = "fileSize";
     private static final String FIELD_VIEW          = "view";
+    private static final String FIELD_NEXT_CURSOR  = "nextCursor";
+    private static final String FIELD_WEBUI_LINK   = "webuiLink";
+    private static final String FIELD_DOWNLOAD_LINK = "downloadLink";
 
     /**
      * Builds a CQL expression for a full-text page search, optionally scoped to
@@ -164,9 +166,14 @@ public class ConfluenceServiceUtil {
             for (JsonNode result : results) {
                 String id        = result.path(FIELD_ID).asText(null);
                 String webuiPath = result.path(FIELD_LINKS).path(FIELD_WEBUI).asText(null);
-                String fullUrl   = (webuiPath != null && !webuiPath.isBlank())
-                        ? baseUrl + webuiPath
-                        : (id != null && !baseUrl.isBlank() ? baseUrl + "/wiki/pages/" + id : null);
+                String fullUrl;
+                if (webuiPath != null && !webuiPath.isBlank()) {
+                    fullUrl = baseUrl + webuiPath;
+                } else if (id != null && !baseUrl.isBlank()) {
+                    fullUrl = baseUrl + "/wiki/pages/" + id;
+                } else {
+                    fullUrl = null;
+                }
 
                 ObjectNode item = OBJECT_MAPPER.createObjectNode();
                 item.put(FIELD_ID,           id);
@@ -181,7 +188,7 @@ public class ConfluenceServiceUtil {
             ObjectNode out = OBJECT_MAPPER.createObjectNode();
             out.set(FIELD_RESULTS, output);
             String nextLink = root.path(FIELD_LINKS).path("next").asText(null);
-            out.put("nextCursor", extractCursor(nextLink));
+            out.put(FIELD_NEXT_CURSOR, extractCursor(nextLink));
 
             return OBJECT_MAPPER.writeValueAsString(out);
         } catch (JsonProcessingException e) {
@@ -201,8 +208,8 @@ public class ConfluenceServiceUtil {
             ArrayNode output = OBJECT_MAPPER.createArrayNode();
 
             for (JsonNode result : results) {
-                String webuiLink   = result.path("webuiLink").asText(null);
-                String downloadLink = result.path("downloadLink").asText(null);
+                String webuiLink   = result.path(FIELD_WEBUI_LINK).asText(null);
+                String downloadLink = result.path(FIELD_DOWNLOAD_LINK).asText(null);
                 String fullUrl     = (webuiLink != null) ? baseUrl + webuiLink : null;
 
                 ObjectNode item = OBJECT_MAPPER.createObjectNode();
@@ -213,7 +220,7 @@ public class ConfluenceServiceUtil {
                 item.put(FIELD_FILE_SIZE,     result.path(FIELD_FILE_SIZE).asLong(0));
                 item.put(FIELD_PARENT_ID,       result.path(FIELD_PARENT_ID).asText(null));
                 item.put(FIELD_URL,          fullUrl);
-                item.put("downloadLink", downloadLink != null ? baseUrl + downloadLink : null);
+                item.put(FIELD_DOWNLOAD_LINK, downloadLink != null ? baseUrl + downloadLink : null);
                 item.put(FIELD_LAST_MODIFIED, result.path(FIELD_VERSION).path(FIELD_CREATED_AT).asText(null));
                 output.add(item);
             }
@@ -221,7 +228,7 @@ public class ConfluenceServiceUtil {
             ObjectNode out = OBJECT_MAPPER.createObjectNode();
             out.set(FIELD_RESULTS, output);
             String nextLink = root.path(FIELD_LINKS).path("next").asText(null);
-            out.put("nextCursor", extractCursor(nextLink));
+            out.put(FIELD_NEXT_CURSOR, extractCursor(nextLink));
 
             return OBJECT_MAPPER.writeValueAsString(out);
         } catch (JsonProcessingException e) {
@@ -423,7 +430,7 @@ public class ConfluenceServiceUtil {
             ObjectNode out = OBJECT_MAPPER.createObjectNode();
             out.set(FIELD_RESULTS, output);
             String nextLink = root.path(FIELD_LINKS).path("next").asText(null);
-            out.put("nextCursor", extractCursor(nextLink));
+            out.put(FIELD_NEXT_CURSOR, extractCursor(nextLink));
 
             return OBJECT_MAPPER.writeValueAsString(out);
         } catch (JsonProcessingException e) {
@@ -538,7 +545,7 @@ public class ConfluenceServiceUtil {
             ObjectNode out = OBJECT_MAPPER.createObjectNode();
             out.set(FIELD_RESULTS, arr);
             String nextLink = root.path(FIELD_LINKS).path("next").asText(null);
-            out.put("nextCursor", extractCursor(nextLink));
+            out.put(FIELD_NEXT_CURSOR, extractCursor(nextLink));
 
             return OBJECT_MAPPER.writeValueAsString(out);
         } catch (JsonProcessingException e) {
@@ -582,17 +589,17 @@ public class ConfluenceServiceUtil {
 
             for (JsonNode page : pagesRoot.path(FIELD_RESULTS)) {
                 String pageId = page.path(FIELD_ID).asText(null);
-                if (pageId == null) continue;
+                String attRaw = pageId == null ? null : attachmentRawByPageId.get(pageId);
 
-                String attRaw = attachmentRawByPageId.get(pageId);
-                if (attRaw == null) continue;
+                if (pageId != null && attRaw != null) {
+                    ArrayNode attArray = parseAttachmentsArray(attRaw, baseUrl);
 
-                ArrayNode attArray = parseAttachmentsArray(attRaw, baseUrl);
-                if (attArray.isEmpty()) continue;
-
-                ObjectNode pageNode = buildV2PageNode(page, spaceKey, spaceName, baseUrl);
-                pageNode.set("attachments", attArray);
-                results.add(pageNode);
+                    if (!attArray.isEmpty()) {
+                        ObjectNode pageNode = buildV2PageNode(page, spaceKey, spaceName, baseUrl);
+                        pageNode.set("attachments", attArray);
+                        results.add(pageNode);
+                    }
+                }
             }
 
             ObjectNode out = OBJECT_MAPPER.createObjectNode();
@@ -610,8 +617,8 @@ public class ConfluenceServiceUtil {
             ArrayNode output = OBJECT_MAPPER.createArrayNode();
 
             for (JsonNode result : root.path(FIELD_RESULTS)) {
-                String webuiLink   = result.path("webuiLink").asText(null);
-                String downloadLink = result.path("downloadLink").asText(null);
+                String webuiLink   = result.path(FIELD_WEBUI_LINK).asText(null);
+                String downloadLink = result.path(FIELD_DOWNLOAD_LINK).asText(null);
 
                 ObjectNode item = OBJECT_MAPPER.createObjectNode();
                 item.put(FIELD_ID,            result.path(FIELD_ID).asText(null));
@@ -619,7 +626,7 @@ public class ConfluenceServiceUtil {
                 item.put(FIELD_MEDIA_TYPE,    result.path(FIELD_MEDIA_TYPE).asText(null));
                 item.put(FIELD_FILE_SIZE,     result.path(FIELD_FILE_SIZE).asLong(0));
                 item.put(FIELD_URL,           webuiLink != null ? baseUrl + webuiLink : null);
-                item.put("downloadLink",      downloadLink != null ? baseUrl + downloadLink : null);
+                item.put(FIELD_DOWNLOAD_LINK,      downloadLink != null ? baseUrl + downloadLink : null);
                 item.put(FIELD_LAST_MODIFIED, result.path(FIELD_VERSION).path(FIELD_CREATED_AT).asText(null));
                 output.add(item);
             }
