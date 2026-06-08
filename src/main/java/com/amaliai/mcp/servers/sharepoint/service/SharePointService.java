@@ -41,6 +41,13 @@ public class SharePointService {
     private static final String FIELD_WEB_URL = "webUrl";
     private static final String FIELD_FILE_TYPE = "fileType";
     private static final String FIELD_SIZE_BYTES = "sizeBytes";
+    private static final String FIELD_MIME_TYPE = "mimeType";
+    private static final String FIELD_DISPLAY_NAME = "displayName";
+    private static final String FIELD_CREATED_DATE_TIME = "createdDateTime";
+    private static final String FIELD_LAST_MODIFIED_DATE_TIME = "lastModifiedDateTime";
+    private static final String FIELD_DESCRIPTION = "description";
+    private static final String FIELD_ID = "id";
+    private static final String FIELD_NAME = "name";
 
     private final SharePointGraphClient      graphClient;
     private final DriveItemParser            driveItemParser;
@@ -138,15 +145,15 @@ public class SharePointService {
         String fileType = dot >= 0 ? name.substring(dot + 1).toLowerCase() : "";
 
         ObjectNode result = OBJECT_MAPPER.createObjectNode();
-        result.put("name",                 name);
+        result.put(FIELD_NAME,             name);
         result.put(FIELD_FILE_TYPE,         fileType.isEmpty() ? null : fileType);
-        result.put("mimeType",             item.path("file").path("mimeType").asText(null));
+        result.put(FIELD_MIME_TYPE,         item.path("file").path(FIELD_MIME_TYPE).asText(null));
         result.put(FIELD_SIZE_BYTES,        item.path("size").asLong(0L));
         result.put(FIELD_WEB_URL,           item.path(FIELD_WEB_URL).asText(null));
-        result.put("createdBy",            item.path("createdBy").path("user").path("displayName").asText(null));
-        result.put("createdDateTime",      item.path("createdDateTime").asText(null));
-        result.put("lastModifiedBy",       item.path("lastModifiedBy").path("user").path("displayName").asText(null));
-        result.put("lastModifiedDateTime", item.path("lastModifiedDateTime").asText(null));
+        result.put("createdBy",            item.path("createdBy").path("user").path(FIELD_DISPLAY_NAME).asText(null));
+        result.put(FIELD_CREATED_DATE_TIME, item.path(FIELD_CREATED_DATE_TIME).asText(null));
+        result.put("lastModifiedBy",       item.path("lastModifiedBy").path("user").path(FIELD_DISPLAY_NAME).asText(null));
+        result.put(FIELD_LAST_MODIFIED_DATE_TIME, item.path(FIELD_LAST_MODIFIED_DATE_TIME).asText(null));
 
         try {
             return OBJECT_MAPPER.writeValueAsString(result);
@@ -173,7 +180,7 @@ public class SharePointService {
                 METADATA_CONTEXT_PREFIX + itemId);
 
         String name     = metadata.path("name").asText("");
-        String mimeType = metadata.path("file").path("mimeType").asText(null);
+        String mimeType = metadata.path("file").path(FIELD_MIME_TYPE).asText(null);
         long   size     = metadata.path("size").asLong(0L);
         String ext      = fileExtension(name);
 
@@ -190,9 +197,9 @@ public class SharePointService {
         String forceDownloadUrl = downloadUrl + (downloadUrl.contains("?") ? "&" : "?") + "download=1";
 
         ObjectNode result = OBJECT_MAPPER.createObjectNode();
-        result.put("name",        name);
+        result.put(FIELD_NAME, name);
         result.put(FIELD_FILE_TYPE, ext.isEmpty() ? null : ext);
-        result.put("mimeType",    mimeType);
+        result.put(FIELD_MIME_TYPE, mimeType);
         result.put(FIELD_SIZE_BYTES, size);
         result.put("downloadUrl", forceDownloadUrl);
 
@@ -342,9 +349,9 @@ public class SharePointService {
     }
 
     private String buildDocumentContentResponse(ExtractedDocumentMetadata metadata, String content, boolean truncated) {
-        ObjectNode result = OBJECT_MAPPER.createObjectNode();
-        result.put("name", metadata.name());
-        result.put(FIELD_FILE_TYPE, metadata.extension());
+         ObjectNode result = OBJECT_MAPPER.createObjectNode();
+         result.put(FIELD_NAME, metadata.name());
+         result.put(FIELD_FILE_TYPE, metadata.extension());
         result.put(FIELD_SIZE_BYTES, metadata.sizeBytes());
         result.put("url", metadata.webUrl());
         result.put("site", metadata.location().site());
@@ -381,13 +388,13 @@ public class SharePointService {
 
             for (JsonNode site : sites) {
                 ObjectNode parsed = OBJECT_MAPPER.createObjectNode();
-                parsed.put("id", site.path("id").asText(null));
-                parsed.put("name", site.path("name").asText(null));
-                parsed.put("displayName", site.path("displayName").asText(null));
+                parsed.put(FIELD_ID, site.path(FIELD_ID).asText(null));
+                parsed.put(FIELD_NAME, site.path(FIELD_NAME).asText(null));
+                parsed.put(FIELD_DISPLAY_NAME, site.path(FIELD_DISPLAY_NAME).asText(null));
                 parsed.put(FIELD_WEB_URL, site.path(FIELD_WEB_URL).asText(null));
-                parsed.put("description", site.path("description").asText(null));
-                parsed.put("createdDateTime", site.path("createdDateTime").asText(null));
-                parsed.put("lastModifiedDateTime", site.path("lastModifiedDateTime").asText(null));
+                parsed.put(FIELD_DESCRIPTION, site.path(FIELD_DESCRIPTION).asText(null));
+                parsed.put(FIELD_CREATED_DATE_TIME, site.path(FIELD_CREATED_DATE_TIME).asText(null));
+                parsed.put(FIELD_LAST_MODIFIED_DATE_TIME, site.path(FIELD_LAST_MODIFIED_DATE_TIME).asText(null));
                 results.add(parsed);
             }
 
@@ -402,13 +409,13 @@ public class SharePointService {
         try {
             JsonNode site = OBJECT_MAPPER.readTree(responseBody);
             ObjectNode result = OBJECT_MAPPER.createObjectNode();
-            result.put("id", site.path("id").asText(null));
-            result.put("name", site.path("name").asText(null));
-            result.put("displayName", site.path("displayName").asText(null));
+            result.put(FIELD_ID, site.path(FIELD_ID).asText(null));
+            result.put(FIELD_NAME, site.path(FIELD_NAME).asText(null));
+            result.put(FIELD_DISPLAY_NAME, site.path(FIELD_DISPLAY_NAME).asText(null));
             result.put(FIELD_WEB_URL, site.path(FIELD_WEB_URL).asText(null));
-            result.put("description", site.path("description").asText(null));
-            result.put("createdDateTime", site.path("createdDateTime").asText(null));
-            result.put("lastModifiedDateTime", site.path("lastModifiedDateTime").asText(null));
+            result.put(FIELD_DESCRIPTION, site.path(FIELD_DESCRIPTION).asText(null));
+            result.put(FIELD_CREATED_DATE_TIME, site.path(FIELD_CREATED_DATE_TIME).asText(null));
+            result.put(FIELD_LAST_MODIFIED_DATE_TIME, site.path(FIELD_LAST_MODIFIED_DATE_TIME).asText(null));
             result.put("isRoot", site.has("root"));
             return OBJECT_MAPPER.writeValueAsString(result);
         } catch (JsonProcessingException e) {
@@ -424,13 +431,13 @@ public class SharePointService {
 
             for (JsonNode drive : drives) {
                 ObjectNode parsed = OBJECT_MAPPER.createObjectNode();
-                parsed.put("id", drive.path("id").asText(null));
-                parsed.put("name", drive.path("name").asText(null));
-                parsed.put("description", drive.path("description").asText(null));
+                parsed.put(FIELD_ID, drive.path(FIELD_ID).asText(null));
+                parsed.put(FIELD_NAME, drive.path(FIELD_NAME).asText(null));
+                parsed.put(FIELD_DESCRIPTION, drive.path(FIELD_DESCRIPTION).asText(null));
                 parsed.put(FIELD_WEB_URL, drive.path(FIELD_WEB_URL).asText(null));
                 parsed.put("driveType", drive.path("driveType").asText(null));
-                parsed.put("createdDateTime", drive.path("createdDateTime").asText(null));
-                parsed.put("lastModifiedDateTime", drive.path("lastModifiedDateTime").asText(null));
+                parsed.put(FIELD_CREATED_DATE_TIME, drive.path(FIELD_CREATED_DATE_TIME).asText(null));
+                parsed.put(FIELD_LAST_MODIFIED_DATE_TIME, drive.path(FIELD_LAST_MODIFIED_DATE_TIME).asText(null));
 
                 // Include quota information if available
                 JsonNode quota = drive.path("quota");
