@@ -19,11 +19,6 @@ import static org.assertj.core.api.Assertions.*;
  */
 class SharePointTokenManagerTest {
 
-    @Test
-    @Disabled("Requires TOKEN_ENCRYPTION_K environment variable configuration")
-    void constructor_configuresComponentCorrectly() {
-        assertThat(true).isTrue();
-    }
 
     @Test
     void wrapAuthException_returnsAuthenticationException() {
