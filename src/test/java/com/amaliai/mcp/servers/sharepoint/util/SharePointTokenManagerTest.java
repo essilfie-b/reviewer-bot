@@ -2,9 +2,8 @@ package com.amaliai.mcp.servers.sharepoint.util;
 
 import com.amaliai.mcp.servers.sharepoint.exception.AuthenticationException;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.Disabled;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Unit tests for {@link SharePointTokenManager}.
