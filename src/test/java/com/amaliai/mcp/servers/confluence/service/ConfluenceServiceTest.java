@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
@@ -95,48 +96,21 @@ class ConfluenceServiceTest {
             verify(confluenceClient).search(TOKEN, CLOUD_ID, "cql", 20);
         }
 
-        @Test
-        void searchContent_zeroLimit_usesDefaultLimit() {
+        @ParameterizedTest
+        @CsvSource({
+            "0, 20",      // zero limit → default limit
+            "-5, 20",     // negative limit → default limit
+            "999, 50",    // exceeds max → clamped to max
+            "30, 30"      // within bounds → use provided limit
+        })
+        void searchContent_limitHandling(int inputLimit, int expectedLimit) {
             utilMock.when(() -> ConfluenceServiceUtil.buildCql(anyString(), isNull())).thenReturn("cql");
-            when(confluenceClient.search(TOKEN, CLOUD_ID, "cql", 20)).thenReturn(RAW);
+            when(confluenceClient.search(TOKEN, CLOUD_ID, "cql", expectedLimit)).thenReturn(RAW);
             utilMock.when(() -> ConfluenceServiceUtil.parseSearchResponse(RAW)).thenReturn(PARSED);
 
-            service.searchContent(TOKEN, CLOUD_ID, "test", null, 0);
+            service.searchContent(TOKEN, CLOUD_ID, "test", null, inputLimit);
 
-            verify(confluenceClient).search(TOKEN, CLOUD_ID, "cql", 20);
-        }
-
-        @Test
-        void searchContent_negativeLimit_usesDefaultLimit() {
-            utilMock.when(() -> ConfluenceServiceUtil.buildCql(anyString(), isNull())).thenReturn("cql");
-            when(confluenceClient.search(TOKEN, CLOUD_ID, "cql", 20)).thenReturn(RAW);
-            utilMock.when(() -> ConfluenceServiceUtil.parseSearchResponse(RAW)).thenReturn(PARSED);
-
-            service.searchContent(TOKEN, CLOUD_ID, "test", null, -5);
-
-            verify(confluenceClient).search(TOKEN, CLOUD_ID, "cql", 20);
-        }
-
-        @Test
-        void searchContent_limitExceedsMax_clampsToMax() {
-            utilMock.when(() -> ConfluenceServiceUtil.buildCql(anyString(), isNull())).thenReturn("cql");
-            when(confluenceClient.search(TOKEN, CLOUD_ID, "cql", 50)).thenReturn(RAW);
-            utilMock.when(() -> ConfluenceServiceUtil.parseSearchResponse(RAW)).thenReturn(PARSED);
-
-            service.searchContent(TOKEN, CLOUD_ID, "test", null, 999);
-
-            verify(confluenceClient).search(TOKEN, CLOUD_ID, "cql", 50);
-        }
-
-        @Test
-        void searchContent_limitWithinBounds_usesProvidedLimit() {
-            utilMock.when(() -> ConfluenceServiceUtil.buildCql(anyString(), isNull())).thenReturn("cql");
-            when(confluenceClient.search(TOKEN, CLOUD_ID, "cql", 30)).thenReturn(RAW);
-            utilMock.when(() -> ConfluenceServiceUtil.parseSearchResponse(RAW)).thenReturn(PARSED);
-
-            service.searchContent(TOKEN, CLOUD_ID, "test", null, 30);
-
-            verify(confluenceClient).search(TOKEN, CLOUD_ID, "cql", 30);
+            verify(confluenceClient).search(TOKEN, CLOUD_ID, "cql", expectedLimit);
         }
 
         @Test
@@ -229,60 +203,24 @@ class ConfluenceServiceTest {
             verify(confluenceClient).listPagesBySpaceId(TOKEN, CLOUD_ID, "42", 20, null);
         }
 
-        @Test
-        void listPages_zeroLimit_usesDefaultLimit() {
+        @ParameterizedTest
+        @CsvSource({
+            "0, 20",      // zero limit → default limit
+            "-1, 20",     // negative limit → default limit
+            "999, 50",    // exceeds max → clamped to max
+            "15, 15"      // within bounds → use provided limit
+        })
+        void listPages_limitHandling(int inputLimit, int expectedLimit) {
             SpaceInfo spaceInfo = new SpaceInfo("42", "ENG", "Engineering");
             when(confluenceClient.getSpaceByKey(TOKEN, CLOUD_ID, "ENG")).thenReturn(RAW);
             utilMock.when(() -> ConfluenceServiceUtil.parseSpaceResult(RAW, "ENG")).thenReturn(spaceInfo);
-            when(confluenceClient.listPagesBySpaceId(TOKEN, CLOUD_ID, "42", 20, null)).thenReturn(RAW);
+            when(confluenceClient.listPagesBySpaceId(TOKEN, CLOUD_ID, "42", expectedLimit, null)).thenReturn(RAW);
             utilMock.when(() -> ConfluenceServiceUtil.parsePagesListResponse(RAW, "ENG", "Engineering"))
                     .thenReturn(PARSED);
 
-            service.listPages(TOKEN, CLOUD_ID, "ENG", 0, null);
+            service.listPages(TOKEN, CLOUD_ID, "ENG", inputLimit, null);
 
-            verify(confluenceClient).listPagesBySpaceId(TOKEN, CLOUD_ID, "42", 20, null);
-        }
-
-        @Test
-        void listPages_negativeLimit_usesDefaultLimit() {
-            SpaceInfo spaceInfo = new SpaceInfo("42", "ENG", "Engineering");
-            when(confluenceClient.getSpaceByKey(TOKEN, CLOUD_ID, "ENG")).thenReturn(RAW);
-            utilMock.when(() -> ConfluenceServiceUtil.parseSpaceResult(RAW, "ENG")).thenReturn(spaceInfo);
-            when(confluenceClient.listPagesBySpaceId(TOKEN, CLOUD_ID, "42", 20, null)).thenReturn(RAW);
-            utilMock.when(() -> ConfluenceServiceUtil.parsePagesListResponse(RAW, "ENG", "Engineering"))
-                    .thenReturn(PARSED);
-
-            service.listPages(TOKEN, CLOUD_ID, "ENG", -1, null);
-
-            verify(confluenceClient).listPagesBySpaceId(TOKEN, CLOUD_ID, "42", 20, null);
-        }
-
-        @Test
-        void listPages_limitExceedsMax_clampsToMax() {
-            SpaceInfo spaceInfo = new SpaceInfo("42", "ENG", "Engineering");
-            when(confluenceClient.getSpaceByKey(TOKEN, CLOUD_ID, "ENG")).thenReturn(RAW);
-            utilMock.when(() -> ConfluenceServiceUtil.parseSpaceResult(RAW, "ENG")).thenReturn(spaceInfo);
-            when(confluenceClient.listPagesBySpaceId(TOKEN, CLOUD_ID, "42", 50, null)).thenReturn(RAW);
-            utilMock.when(() -> ConfluenceServiceUtil.parsePagesListResponse(RAW, "ENG", "Engineering"))
-                    .thenReturn(PARSED);
-
-            service.listPages(TOKEN, CLOUD_ID, "ENG", 999, null);
-
-            verify(confluenceClient).listPagesBySpaceId(TOKEN, CLOUD_ID, "42", 50, null);
-        }
-
-        @Test
-        void listPages_limitWithinBounds_usesProvidedLimit() {
-            SpaceInfo spaceInfo = new SpaceInfo("42", "ENG", "Engineering");
-            when(confluenceClient.getSpaceByKey(TOKEN, CLOUD_ID, "ENG")).thenReturn(RAW);
-            utilMock.when(() -> ConfluenceServiceUtil.parseSpaceResult(RAW, "ENG")).thenReturn(spaceInfo);
-            when(confluenceClient.listPagesBySpaceId(TOKEN, CLOUD_ID, "42", 15, null)).thenReturn(RAW);
-            utilMock.when(() -> ConfluenceServiceUtil.parsePagesListResponse(RAW, "ENG", "Engineering"))
-                    .thenReturn(PARSED);
-
-            service.listPages(TOKEN, CLOUD_ID, "ENG", 15, null);
-
-            verify(confluenceClient).listPagesBySpaceId(TOKEN, CLOUD_ID, "42", 15, null);
+            verify(confluenceClient).listPagesBySpaceId(TOKEN, CLOUD_ID, "42", expectedLimit, null);
         }
 
         @Test
@@ -386,49 +324,49 @@ class ConfluenceServiceTest {
 
         @Test
         void listSpaces_validType_lowerCaseAccepted() {
-            when(confluenceClient.listSpaces(TOKEN, CLOUD_ID, "global", null, null, 25, null)).thenReturn(RAW);
+            when(confluenceClient.listSpaces(TOKEN, CLOUD_ID, "global", null, null, 250, null)).thenReturn(RAW);
             utilMock.when(() -> ConfluenceServiceUtil.parseSpacesListResponse(RAW)).thenReturn(PARSED);
 
             assertThat(service.listSpaces(TOKEN, CLOUD_ID, "global", null, null, null, null)).isEqualTo(PARSED);
-            verify(confluenceClient).listSpaces(TOKEN, CLOUD_ID, "global", null, null, 25, null);
+            verify(confluenceClient).listSpaces(TOKEN, CLOUD_ID, "global", null, null, 250, null);
         }
 
         @Test
         void listSpaces_validStatus_lowerCaseAccepted() {
-            when(confluenceClient.listSpaces(TOKEN, CLOUD_ID, null, "archived", null, 25, null)).thenReturn(RAW);
+            when(confluenceClient.listSpaces(TOKEN, CLOUD_ID, null, "archived", null, 250, null)).thenReturn(RAW);
             utilMock.when(() -> ConfluenceServiceUtil.parseSpacesListResponse(RAW)).thenReturn(PARSED);
 
             assertThat(service.listSpaces(TOKEN, CLOUD_ID, null, "archived", null, null, null)).isEqualTo(PARSED);
-            verify(confluenceClient).listSpaces(TOKEN, CLOUD_ID, null, "archived", null, 25, null);
+            verify(confluenceClient).listSpaces(TOKEN, CLOUD_ID, null, "archived", null, 250, null);
         }
 
         @Test
         void listSpaces_nullLimit_usesDefaultLimit() {
-            when(confluenceClient.listSpaces(TOKEN, CLOUD_ID, null, null, null, 25, null)).thenReturn(RAW);
+            when(confluenceClient.listSpaces(TOKEN, CLOUD_ID, null, null, null, 250, null)).thenReturn(RAW);
             utilMock.when(() -> ConfluenceServiceUtil.parseSpacesListResponse(RAW)).thenReturn(PARSED);
 
             assertThat(service.listSpaces(TOKEN, CLOUD_ID, null, null, null, null, null)).isEqualTo(PARSED);
-            verify(confluenceClient).listSpaces(TOKEN, CLOUD_ID, null, null, null, 25, null);
+            verify(confluenceClient).listSpaces(TOKEN, CLOUD_ID, null, null, null, 250, null);
         }
 
         @Test
         void listSpaces_zeroLimit_usesDefaultLimit() {
-            when(confluenceClient.listSpaces(TOKEN, CLOUD_ID, null, null, null, 25, null)).thenReturn(RAW);
+            when(confluenceClient.listSpaces(TOKEN, CLOUD_ID, null, null, null, 250, null)).thenReturn(RAW);
             utilMock.when(() -> ConfluenceServiceUtil.parseSpacesListResponse(RAW)).thenReturn(PARSED);
 
             service.listSpaces(TOKEN, CLOUD_ID, null, null, null, 0, null);
 
-            verify(confluenceClient).listSpaces(TOKEN, CLOUD_ID, null, null, null, 25, null);
+            verify(confluenceClient).listSpaces(TOKEN, CLOUD_ID, null, null, null, 250, null);
         }
 
         @Test
         void listSpaces_negativeLimit_usesDefaultLimit() {
-            when(confluenceClient.listSpaces(TOKEN, CLOUD_ID, null, null, null, 25, null)).thenReturn(RAW);
+            when(confluenceClient.listSpaces(TOKEN, CLOUD_ID, null, null, null, 250, null)).thenReturn(RAW);
             utilMock.when(() -> ConfluenceServiceUtil.parseSpacesListResponse(RAW)).thenReturn(PARSED);
 
             service.listSpaces(TOKEN, CLOUD_ID, null, null, null, -10, null);
 
-            verify(confluenceClient).listSpaces(TOKEN, CLOUD_ID, null, null, null, 25, null);
+            verify(confluenceClient).listSpaces(TOKEN, CLOUD_ID, null, null, null, 250, null);
         }
 
         @Test
@@ -453,20 +391,20 @@ class ConfluenceServiceTest {
 
         @Test
         void listSpaces_blankQuery_passesNullQueryToClient() {
-            when(confluenceClient.listSpaces(TOKEN, CLOUD_ID, null, null, null, 25, null)).thenReturn(RAW);
+            when(confluenceClient.listSpaces(TOKEN, CLOUD_ID, null, null, null, 250, null)).thenReturn(RAW);
             utilMock.when(() -> ConfluenceServiceUtil.parseSpacesListResponse(RAW)).thenReturn(PARSED);
 
             assertThat(service.listSpaces(TOKEN, CLOUD_ID, null, null, "   ", null, null)).isEqualTo(PARSED);
-            verify(confluenceClient).listSpaces(TOKEN, CLOUD_ID, null, null, null, 25, null);
+            verify(confluenceClient).listSpaces(TOKEN, CLOUD_ID, null, null, null, 250, null);
         }
 
         @Test
         void listSpaces_queryIsTrimmed_beforeDelegation() {
-            when(confluenceClient.listSpaces(TOKEN, CLOUD_ID, null, null, "engineering", 25, null)).thenReturn(RAW);
+            when(confluenceClient.listSpaces(TOKEN, CLOUD_ID, null, null, "engineering", 250, null)).thenReturn(RAW);
             utilMock.when(() -> ConfluenceServiceUtil.parseSpacesListResponse(RAW)).thenReturn(PARSED);
 
             assertThat(service.listSpaces(TOKEN, CLOUD_ID, null, null, "  engineering  ", null, null)).isEqualTo(PARSED);
-            verify(confluenceClient).listSpaces(TOKEN, CLOUD_ID, null, null, "engineering", 25, null);
+            verify(confluenceClient).listSpaces(TOKEN, CLOUD_ID, null, null, "engineering", 250, null);
         }
     }
 
@@ -550,31 +488,14 @@ class ConfluenceServiceTest {
                     .hasMessageContaining("pageId must not be empty");
         }
 
-        @Test
-        void getPageChildren_nullLimit_usesDefaultLimit() {
+        @ParameterizedTest
+        @NullSource
+        @ValueSource(ints = {0, -1})
+        void getPageChildren_defaultLimitHandling_usesDefaultLimit(Integer inputLimit) {
             when(confluenceClient.getPageChildren(TOKEN, CLOUD_ID, "p1", 20, null)).thenReturn(RAW);
             utilMock.when(() -> ConfluenceServiceUtil.parsePageChildrenResponse(RAW)).thenReturn(PARSED);
 
-            assertThat(service.getPageChildren(TOKEN, CLOUD_ID, "p1", null, null)).isEqualTo(PARSED);
-            verify(confluenceClient).getPageChildren(TOKEN, CLOUD_ID, "p1", 20, null);
-        }
-
-        @Test
-        void getPageChildren_zeroLimit_usesDefaultLimit() {
-            when(confluenceClient.getPageChildren(TOKEN, CLOUD_ID, "p1", 20, null)).thenReturn(RAW);
-            utilMock.when(() -> ConfluenceServiceUtil.parsePageChildrenResponse(RAW)).thenReturn(PARSED);
-
-            service.getPageChildren(TOKEN, CLOUD_ID, "p1", 0, null);
-
-            verify(confluenceClient).getPageChildren(TOKEN, CLOUD_ID, "p1", 20, null);
-        }
-
-        @Test
-        void getPageChildren_negativeLimit_usesDefaultLimit() {
-            when(confluenceClient.getPageChildren(TOKEN, CLOUD_ID, "p1", 20, null)).thenReturn(RAW);
-            utilMock.when(() -> ConfluenceServiceUtil.parsePageChildrenResponse(RAW)).thenReturn(PARSED);
-
-            service.getPageChildren(TOKEN, CLOUD_ID, "p1", -1, null);
+            assertThat(service.getPageChildren(TOKEN, CLOUD_ID, "p1", inputLimit, null)).isEqualTo(PARSED);
 
             verify(confluenceClient).getPageChildren(TOKEN, CLOUD_ID, "p1", 20, null);
         }
