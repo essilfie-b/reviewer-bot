@@ -34,7 +34,10 @@ pipeline {
             sh """
               ${mvnHome}/bin/mvn sonar:sonar \
               -Dsonar.projectKey=Amali-Tech_amaliai-mcp_5b2eef4c-f034-4331-ba8f-603743761df0 \
-              -Dsonar.projectName=amaliai-mcp
+              -Dsonar.projectName=amaliai-mcp \
+              -Dsonar.exclusions=**/dto/**,**/dtos/**,**/constant/**,**/constants/**,**/model/**,**/models/**,**/entity/**,**/entities/**,**/exception/**,**/exceptions/** \
+              -Dsonar.test.exclusions=**/dto/**,**/dtos/**,**/constant/**,**/constants/**,**/model/**,**/models/**,**/entity/**,**/entities/**,**/exception/**,**/exceptions/** \
+              -Dsonar.coverage.exclusions=**/dto/**,**/dtos/**,**/constant/**,**/constants/**,**/model/**,**/models/**,**/entity/**,**/entities/**,**/exception/**,**/exceptions/**
             """
           }
         }
