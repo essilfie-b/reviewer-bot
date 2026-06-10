@@ -17,7 +17,9 @@ import java.util.Map;
 @Slf4j
 public class ConfluenceServiceUtil {
 
-    private ConfluenceServiceUtil(){};
+    private ConfluenceServiceUtil() {
+        throw new UnsupportedOperationException("Utility class");
+    }
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     /**
      * Maximum number of characters returned in a page body.
