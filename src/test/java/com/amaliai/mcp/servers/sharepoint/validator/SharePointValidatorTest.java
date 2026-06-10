@@ -4,11 +4,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import java.time.OffsetDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Unit tests for {@link SharePointValidator}.
@@ -198,9 +197,7 @@ class SharePointValidatorTest {
             String toDate = "2025-12-31T23:59:59Z";
             List<String> result = validator.buildDateFilters(fromDate, toDate);
 
-            assertThat(result).hasSize(2);
-            assertThat(result).anyMatch(f -> f.contains("ge"));
-            assertThat(result).anyMatch(f -> f.contains("le"));
+            assertThat(result).hasSize(2).anyMatch(f -> f.contains("ge")).anyMatch(f -> f.contains("le"));
         }
 
         @Test

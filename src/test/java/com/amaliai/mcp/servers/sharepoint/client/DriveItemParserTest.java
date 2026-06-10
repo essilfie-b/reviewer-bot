@@ -38,9 +38,6 @@ class DriveItemParserTest {
         return sb.toString();
     }
 
-    private int countJsonArrayElements(String json) throws Exception {
-        return objectMapper.readValue(json, JsonNode[].class).length;
-    }
 
     private String fileItem(String id, String name, String createdBy) {
         return String.format(
@@ -117,8 +114,7 @@ class DriveItemParserTest {
             String result = parser.parse(response, null, null, true);
 
             JsonNode[] items = objectMapper.readValue(result, JsonNode[].class);
-            assertThat(items).hasSize(2);
-            assertThat(items).anyMatch(item -> "folder".equals(item.path("itemType").asText()));
+            assertThat(items).hasSize(2).anyMatch(item -> "folder".equals(item.path("itemType").asText()));
         }
     }
 

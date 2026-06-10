@@ -46,8 +46,7 @@ class SharePointResponseUtilTest {
         void errorResponse_withSpecialCharacters_escapesCorrectly() {
             String error = responseUtil.errorResponse("downloadFile", "File \"test.pdf\" not found");
 
-            assertThat(error).contains("downloadFile");
-            assertThat(error).contains("test.pdf");
+            assertThat(error).contains("downloadFile").contains("test.pdf");
         }
 
         @Test
@@ -82,8 +81,8 @@ class SharePointResponseUtilTest {
             String result = responseUtil.trimResponse(content, maxBytes);
 
             assertThat(result).endsWith("... [TRUNCATED]");
-            assertThat(result.getBytes(StandardCharsets.UTF_8).length).isGreaterThan(maxBytes);
-        }
+            assertThat(result.getBytes(StandardCharsets.UTF_8))
+                    .hasSizeGreaterThan(maxBytes);        }
 
         @Test
         void trimResponse_atExactLimit_returnsUnchanged() {
@@ -93,8 +92,7 @@ class SharePointResponseUtilTest {
 
             String result = responseUtil.trimResponse(content, maxBytes);
 
-            assertThat(result).isEqualTo(content);
-            assertThat(result).doesNotContain("TRUNCATED");
+            assertThat(result).isEqualTo(content).doesNotContain("TRUNCATED");
         }
 
         @Test
@@ -106,8 +104,9 @@ class SharePointResponseUtilTest {
             String result = responseUtil.trimResponse(content, maxBytes);
 
             byte[] resultBytes = result.getBytes(StandardCharsets.UTF_8);
-            assertThat(resultBytes.length).isGreaterThanOrEqualTo(maxBytes);
-            assertThat(resultBytes.length).isLessThan(fullBytes.length);
+            assertThat(resultBytes)
+                    .hasSizeGreaterThanOrEqualTo(maxBytes)
+                    .hasSizeLessThan(fullBytes.length);
         }
 
         @Test
@@ -122,8 +121,10 @@ class SharePointResponseUtilTest {
             String result = responseUtil.trimResponse(content, maxBytes);
 
             assertThat(result).endsWith("... [TRUNCATED]");
+
             byte[] bytes = result.getBytes(StandardCharsets.UTF_8);
-            assertThat(bytes.length).isGreaterThan(maxBytes);
+
+            assertThat(bytes).hasSizeGreaterThan(maxBytes);
         }
 
         @Test
@@ -160,8 +161,7 @@ class SharePointResponseUtilTest {
 
             String result = responseUtil.trimResponse(jsonContent, maxBytes);
 
-            assertThat(result).startsWith("{\"data\": \"");
-            assertThat(result).endsWith("... [TRUNCATED]");
+            assertThat(result).startsWith("{\"data\": \"").endsWith("... [TRUNCATED]");
         }
     }
 }

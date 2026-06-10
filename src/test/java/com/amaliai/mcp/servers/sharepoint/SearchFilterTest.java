@@ -69,9 +69,10 @@ class SearchFilterTest {
 
         String str = filter.toString();
 
-        assertThat(str).contains("SearchFilter");
-        assertThat(str).contains("docx");
-        assertThat(str).contains("John Doe");
+        assertThat(str)
+                .contains("SearchFilter")
+                .contains("docx")
+                .contains("John Doe");
     }
 }
 

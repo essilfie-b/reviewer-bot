@@ -2,7 +2,6 @@ package com.amaliai.mcp.servers.sharepoint.service;
 
 import com.amaliai.mcp.servers.sharepoint.client.DriveItemParser;
 import com.amaliai.mcp.servers.sharepoint.client.SharePointGraphClient;
-import com.amaliai.mcp.servers.sharepoint.exception.SharePointOperationException;
 import com.amaliai.mcp.servers.sharepoint.extractor.SharePointContentExtractor;
 import com.amaliai.mcp.servers.sharepoint.util.SharePointResponseUtil;
 import com.amaliai.mcp.servers.sharepoint.validator.SharePointValidator;
@@ -11,11 +10,16 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import static org.assertj.core.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * Unit tests for {@link SharePointService}.
@@ -36,20 +40,20 @@ class SharePointServiceTest {
     private static final String EMPTY_ITEMS_RESPONSE = "{\"value\":[]}";
     private static final String PARSED_RESPONSE = "[]";
 
-    @Mock(lenient = true) private SharePointGraphClient graphClient;
-    @Mock(lenient = true) private DriveItemParser driveItemParser;
-    @Mock(lenient = true) private SharePointContentExtractor contentExtractor;
-    @Mock(lenient = true) private SharePointValidator validator;
-    @Mock(lenient = true) private SharePointResponseUtil responseUtil;
+    @Mock private SharePointGraphClient graphClient;
+    @Mock private DriveItemParser driveItemParser;
+    @Mock private SharePointContentExtractor contentExtractor;
+    @Mock private SharePointValidator validator;
+    @Mock private SharePointResponseUtil responseUtil;
 
     private SharePointService service;
 
-    @BeforeEach
-    void setUp() {
-        service = new SharePointService(graphClient, driveItemParser, contentExtractor, validator, responseUtil);
-        // responseUtil.trimResponse returns the input unchanged by default
-        when(responseUtil.trimResponse(anyString(), anyInt())).thenAnswer(inv -> inv.getArgument(0));
-    }
+     @BeforeEach
+     void setUp() {
+         service = new SharePointService(graphClient, driveItemParser, contentExtractor, validator, responseUtil);
+         // responseUtil.trimResponse returns the input unchanged by default
+         Mockito.lenient().when(responseUtil.trimResponse(anyString(), anyInt())).thenAnswer(inv -> inv.getArgument(0));
+     }
 
     @Nested
     class ListDocumentsTests {
@@ -212,8 +216,9 @@ class SharePointServiceTest {
 
             String result = service.getDocumentContent(TOKEN, itemId);
 
-            assertThat(result).isNotNull();
-            assertThat(result).contains("document.txt");
+            assertThat(result)
+                    .isNotNull()
+                    .contains("document.txt");
         }
 
         @Test
@@ -296,10 +301,11 @@ class SharePointServiceTest {
 
             String result = service.getFileDownloadUrl(TOKEN, itemId);
 
-            assertThat(result).isNotNull();
-            assertThat(result).contains("file.pdf");
-            assertThat(result).contains("downloadUrl");
-            assertThat(result).contains("download=1");
+            assertThat(result)
+                    .isNotNull()
+                    .contains("file.pdf")
+                    .contains("downloadUrl")
+                    .contains("download=1");
         }
 
         @Test
