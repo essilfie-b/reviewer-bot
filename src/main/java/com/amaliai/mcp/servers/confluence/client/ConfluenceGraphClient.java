@@ -24,6 +24,8 @@ import org.springframework.web.client.RestClient;
 public class ConfluenceGraphClient {
 
     private static final String BEARER_PREFIX = "Bearer ";
+    private static final String QUERY_PARAM_LIMIT = "limit";
+    private static final String QUERY_PARAM_CURSOR = "cursor";
 
     private final RestClient confluenceApiClient;
 
@@ -45,7 +47,7 @@ public class ConfluenceGraphClient {
         return fetch(confluenceApiClient.get()
                 .uri(b -> b.path("/{cloudId}/wiki/rest/api/search")
                         .queryParam("cql", cql)
-                        .queryParam("limit", limit)
+                        .queryParam(QUERY_PARAM_LIMIT, limit)
                         .queryParam("expand", "content.space")
                         .build(cloudId)), token);
     }
@@ -118,9 +120,9 @@ public class ConfluenceGraphClient {
                 .uri(b -> {
                     var u = b.path("/{cloudId}/wiki/api/v2/pages")
                             .queryParam("space-id", spaceId)
-                            .queryParam("limit", limit)
+                            .queryParam(QUERY_PARAM_LIMIT, limit)
                             .queryParam("status", "current");
-                    if (cursor != null && !cursor.isBlank()) u.queryParam("cursor", cursor);
+                    if (cursor != null && !cursor.isBlank()) u.queryParam(QUERY_PARAM_CURSOR, cursor);
                     return u.build(cloudId);
                 }), token);
     }
@@ -162,11 +164,11 @@ public class ConfluenceGraphClient {
                 .uri(b -> {
                     var u = b.path("/{cloudId}/wiki/api/v2/spaces")
                             .queryParam("description-format", "plain")
-                            .queryParam("limit", limit);
+                            .queryParam(QUERY_PARAM_LIMIT, limit);
                     if (type != null && !type.isBlank())     u.queryParam("type", type);
                     if (status != null && !status.isBlank()) u.queryParam("status", status);
                     if (query != null && !query.isBlank())   u.queryParam("query", query);
-                    if (cursor != null && !cursor.isBlank()) u.queryParam("cursor", cursor);
+                    if (cursor != null && !cursor.isBlank()) u.queryParam(QUERY_PARAM_CURSOR, cursor);
                     return u.build(cloudId);
                 }), token);
     }
@@ -198,16 +200,16 @@ public class ConfluenceGraphClient {
      * @param cursor  optional pagination cursor from a previous response's nextCursor
      * @return raw JSON response body from {@code GET /wiki/api/v2/pages/{pageId}/children}
      */
-    public String getPageChildren(String token, String cloudId, String pageId, int limit, String cursor) {
-        log.debug("Confluence: GET /{}/wiki/api/v2/pages/{}/children limit={} cursor={}", cloudId, pageId, limit, cursor);
-        return fetch(confluenceApiClient.get()
-                .uri(b -> {
-                    var u = b.path("/{cloudId}/wiki/api/v2/pages/{pageId}/children")
-                            .queryParam("limit", limit);
-                    if (cursor != null && !cursor.isBlank()) u.queryParam("cursor", cursor);
-                    return u.build(cloudId, pageId);
-                }), token);
-    }
+     public String getPageChildren(String token, String cloudId, String pageId, int limit, String cursor) {
+         log.debug("Confluence: GET /{}/wiki/api/v2/pages/{}/children limit={} cursor={}", cloudId, pageId, limit, cursor);
+         return fetch(confluenceApiClient.get()
+                 .uri(b -> {
+                     var u = b.path("/{cloudId}/wiki/api/v2/pages/{pageId}/children")
+                             .queryParam(QUERY_PARAM_LIMIT, limit);
+                     if (cursor != null && !cursor.isBlank()) u.queryParam(QUERY_PARAM_CURSOR, cursor);
+                     return u.build(cloudId, pageId);
+                 }), token);
+     }
 
      /**
      * Retrieves attachments for a specific Confluence page.
@@ -220,14 +222,14 @@ public class ConfluenceGraphClient {
      * @param cursor  optional pagination cursor from a previous response's nextCursor
      * @return raw JSON response body from {@code GET /wiki/api/v2/pages/{pageId}/attachments}
      */
-    public String getAttachments(String token, String cloudId, String pageId, int limit, String cursor) {
-        log.debug("Confluence: GET /{}/wiki/api/v2/pages/{}/attachments limit={} cursor={}", cloudId, pageId, limit, cursor);
-        return fetch(confluenceApiClient.get()
-                .uri(b -> {
-                    var u = b.path("/{cloudId}/wiki/api/v2/pages/{pageId}/attachments")
-                            .queryParam("limit", limit);
-                    if (cursor != null && !cursor.isBlank()) u.queryParam("cursor", cursor);
-                    return u.build(cloudId, pageId);
-                }), token);
-    }
+     public String getAttachments(String token, String cloudId, String pageId, int limit, String cursor) {
+         log.debug("Confluence: GET /{}/wiki/api/v2/pages/{}/attachments limit={} cursor={}", cloudId, pageId, limit, cursor);
+         return fetch(confluenceApiClient.get()
+                 .uri(b -> {
+                     var u = b.path("/{cloudId}/wiki/api/v2/pages/{pageId}/attachments")
+                             .queryParam(QUERY_PARAM_LIMIT, limit);
+                     if (cursor != null && !cursor.isBlank()) u.queryParam(QUERY_PARAM_CURSOR, cursor);
+                     return u.build(cloudId, pageId);
+                 }), token);
+     }
 }

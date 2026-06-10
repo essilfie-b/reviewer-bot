@@ -25,7 +25,6 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 /**
  * Unit tests for {@link ConfluenceGraphClient}.
@@ -340,7 +339,7 @@ class ConfluenceGraphClientTest {
 
         @Test
         void getPageChildren_otherHttpError_throwsConfluenceOperationException() {
-            stubHttpError(HttpStatus.UNPROCESSABLE_ENTITY);
+            stubHttpError(HttpStatus.valueOf(422)); // 422 Unprocessable Entity
             assertThatThrownBy(() -> client.getPageChildren(TOKEN, CLOUD_ID, "page-1", 20, null))
                     .isInstanceOf(ConfluenceOperationException.class);
         }
