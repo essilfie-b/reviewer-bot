@@ -20,9 +20,9 @@ pipeline {
 
   stages {
 
-    stage('Build (Maven)') {
+    stage('Maven Build & Test') {
       steps {
-        sh 'mvn clean package -Dmaven.test.skip'
+        sh 'mvn clean verify -Dskip.sonar=true'
       }
     }
 
@@ -31,7 +31,11 @@ pipeline {
         script {
           withSonarQubeEnv('SonarQube') {
             def mvnHome = tool 'Maven 3.9.9'
-            sh "${mvnHome}/bin/mvn sonar:sonar -Dsonar.projectKey=Amali-Tech_amaliai-mcp_5b2eef4c-f034-4331-ba8f-603743761df0"
+            sh """
+              ${mvnHome}/bin/mvn sonar:sonar \
+              -Dsonar.projectKey=Amali-Tech_amaliai-mcp_5b2eef4c-f034-4331-ba8f-603743761df0 \
+              -Dsonar.projectName=amaliai-mcp
+            """
           }
         }
       }
