@@ -40,8 +40,7 @@ class SharePointContentExtractorTest {
 
             String result = extractor.extractText(bytes, "document.txt");
 
-            assertThat(result).contains("Hello");
-            assertThat(result).contains("World");
+            assertThat(result).contains("Hello").contains("World");
         }
 
         @Test
@@ -51,8 +50,7 @@ class SharePointContentExtractorTest {
 
             String result = extractor.extractText(bytes, "data.json");
 
-            assertThat(result).contains("key");
-            assertThat(result).contains("value");
+            assertThat(result).contains("key").contains("value");
         }
 
         @Test
@@ -62,8 +60,7 @@ class SharePointContentExtractorTest {
 
             String result = extractor.extractText(bytes, "README.md");
 
-            assertThat(result).contains("Title");
-            assertThat(result).contains("paragraph");
+            assertThat(result).contains("Title").contains("paragraph");
         }
 
         @Test
@@ -73,8 +70,7 @@ class SharePointContentExtractorTest {
 
             String result = extractor.extractText(bytes, "page.html");
 
-            assertThat(result).contains("Hello");
-            assertThat(result).contains("World");
+            assertThat(result).contains("Hello").contains("World");
         }
 
         @Test
@@ -95,9 +91,7 @@ class SharePointContentExtractorTest {
 
             String result = extractor.extractText(bytes, "data.csv");
 
-            assertThat(result).contains("Name");
-            assertThat(result).contains("John");
-            assertThat(result).contains("Jane");
+            assertThat(result).contains("Name").contains("John").contains("Jane");
         }
 
         @Test
@@ -107,8 +101,7 @@ class SharePointContentExtractorTest {
 
             String result = extractor.extractText(bytes, "application.log");
 
-            assertThat(result).contains("Application started");
-            assertThat(result).contains("error");
+            assertThat(result).contains("Application started").contains("error");
         }
     }
 

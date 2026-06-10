@@ -432,44 +432,20 @@ class ConfluenceServiceTest {
             verify(confluenceClient).getAttachments(TOKEN, CLOUD_ID, "p1", 20, null);
         }
 
-        @Test
-        void getAttachments_zeroLimit_usesDefaultLimit() {
-            when(confluenceClient.getAttachments(TOKEN, CLOUD_ID, "p1", 20, null)).thenReturn(RAW);
+        @ParameterizedTest
+        @CsvSource({
+            "0, 20",      // zero limit → default limit
+            "-3, 20",     // negative limit → default limit
+            "200, 50",    // exceeds max → clamped to max
+            "10, 10"      // within bounds → use provided limit
+        })
+        void getAttachments_limitHandling(int inputLimit, int expectedLimit) {
+            when(confluenceClient.getAttachments(TOKEN, CLOUD_ID, "p1", expectedLimit, null)).thenReturn(RAW);
             utilMock.when(() -> ConfluenceServiceUtil.parseAttachmentsResponse(RAW)).thenReturn(PARSED);
 
-            service.getAttachments(TOKEN, CLOUD_ID, "p1", 0, null);
+            service.getAttachments(TOKEN, CLOUD_ID, "p1", inputLimit, null);
 
-            verify(confluenceClient).getAttachments(TOKEN, CLOUD_ID, "p1", 20, null);
-        }
-
-        @Test
-        void getAttachments_negativeLimit_usesDefaultLimit() {
-            when(confluenceClient.getAttachments(TOKEN, CLOUD_ID, "p1", 20, null)).thenReturn(RAW);
-            utilMock.when(() -> ConfluenceServiceUtil.parseAttachmentsResponse(RAW)).thenReturn(PARSED);
-
-            service.getAttachments(TOKEN, CLOUD_ID, "p1", -3, null);
-
-            verify(confluenceClient).getAttachments(TOKEN, CLOUD_ID, "p1", 20, null);
-        }
-
-        @Test
-        void getAttachments_limitExceedsMax_clampsToMax() {
-            when(confluenceClient.getAttachments(TOKEN, CLOUD_ID, "p1", 50, null)).thenReturn(RAW);
-            utilMock.when(() -> ConfluenceServiceUtil.parseAttachmentsResponse(RAW)).thenReturn(PARSED);
-
-            service.getAttachments(TOKEN, CLOUD_ID, "p1", 200, null);
-
-            verify(confluenceClient).getAttachments(TOKEN, CLOUD_ID, "p1", 50, null);
-        }
-
-        @Test
-        void getAttachments_limitWithinBounds_usesProvidedLimit() {
-            when(confluenceClient.getAttachments(TOKEN, CLOUD_ID, "p1", 10, null)).thenReturn(RAW);
-            utilMock.when(() -> ConfluenceServiceUtil.parseAttachmentsResponse(RAW)).thenReturn(PARSED);
-
-            service.getAttachments(TOKEN, CLOUD_ID, "p1", 10, null);
-
-            verify(confluenceClient).getAttachments(TOKEN, CLOUD_ID, "p1", 10, null);
+            verify(confluenceClient).getAttachments(TOKEN, CLOUD_ID, "p1", expectedLimit, null);
         }
     }
 
