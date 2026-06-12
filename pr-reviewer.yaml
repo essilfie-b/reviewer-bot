@@ -1,17 +1,17 @@
-# Governing PR-reviewer configuration (lives on the base branch: main).
-# Used to exercise Ticket 11 (repository review configuration).
+# TAMPERED config on the PR branch. If the bot (wrongly) read config from the
+# PR head, this would silence every comment. It MUST be ignored: the bot reads
+# config from the base branch (main) only.
 enabled: true
 review_settings:
   enabled: true
   max_files_per_review: 30
-  # performance_issues are suppressed; an attempt to disable security_concerns
-  # must be IGNORED by the bot (security can never be turned off).
   disabled_categories:
-    - performance_issues
+    - suggestions
+    - review_comments
     - security_concerns
+    - performance_issues
+    - potential_issues
 file_rules:
   enabled: true
-  # Findings on files matching these patterns must be dropped.
   ignored_files:
-    - "legacy/**"
-    - "*.md"
+    - "**"
