@@ -1,110 +1,18 @@
-# Sophisticated governing PR-reviewer configuration (lives on base branch: main).
-# Exercises the full schema plus every Ticket 11 repo-level control.
+# Governing config for the Ticket 11 + Ticket 9 (severity thresholds) integration test.
 enabled: true
 
-metadata:
-  name: "Reviewer Bot Advanced Test Config"
-  version: "2.0.0"
-  main_language: "python"
-  main_framework: "FastAPI"
-  created_by: "bernard.essilfie@amalitech.com"
-  last_updated: "2026-06-12"
-  description: "Comprehensive config exercising repo-level controls and instruction sections."
+# Ticket 9 reads this from the TOP LEVEL. Only ERROR/CRITICAL findings post inline;
+# WARNING/INFO drop to a summary-only "low-severity" section.
+comment_severity_threshold: error
 
 review_settings:
   enabled: true
   max_files_per_review: 25
-  max_comments: 5
-  comment_severity_threshold: warning
-  # potential_issues and performance_issues are suppressed; the attempt to
-  # disable security_concerns must be ignored (security can never be turned off).
-  disabled_categories:
-    - performance_issues
-    - potential_issues
-    - security_concerns
-  style_guide_path: "docs/style-guide.md"
-
-languages:
-  python:
-    enabled: true
-    style_guide: "pep8"
-    rules_list:
-      - "Use type hints on public functions"
-      - "Prefer parameterized SQL queries"
-      - "Avoid mutable default arguments"
-
-code_quality:
-  enabled: true
-  complexity:
-    enabled: true
-    max_cyclomatic_complexity: 8
-    max_function_length: 40
-    max_class_length: 300
-  naming_conventions:
-    enabled: true
-    case_to_enforce_variables: "snake_case"
-    case_to_enforce_functions: "snake_case"
-    case_to_enforce_classes: "PascalCase"
-    require_descriptive_names: true
-    min_variable_name_length: 3
-    forbidden_prefixes:
-      - "tmp"
-      - "temp"
-      - "foo"
-  documentation:
-    enabled: true
-    require_function_docs: true
-    require_class_docs: true
-    require_api_docs: false
-  security:
-    enabled: true
-    scan_for_secrets: true
-    check_dependency_vulnerabilities: true
-    enforce_input_validation: true
-    flag_sql_injection_risks: true
-
-architecture:
-  enabled: true
-  design_patterns:
-    enabled: true
-    enforce_solid_principles: true
-    discourage_god_objects: true
-    max_dependencies_per_class: 6
-  api_design:
-    enabled: true
-    api_type: "REST"
-    enforce_api_conventions: true
-
-performance:
-  enabled: true
-  database:
-    enabled: true
-    flag_n_plus_one_queries: true
-    require_query_optimization: true
-  memory:
-    enabled: true
-    flag_memory_leaks: true
-    suggest_memory_optimizations: true
-    check_resource_cleanup: true
-  algorithms:
-    enabled: true
-    flag_inefficient_loops: true
-    suggest_optimizations: true
-
-custom_prompts:
-  enabled: true
-  code_review_template: |
-    Pay special attention to:
-    - Input validation on every API request handler.
-    - Consistent error handling; never swallow exceptions silently.
-    - All database access must use parameterized queries.
+  # Mirrored here too, since Ticket 11's schema expects it under review_settings.
+  comment_severity_threshold: error
 
 file_rules:
   enabled: true
+  # Ticket 11 control: findings on these paths are dropped entirely.
   ignored_files:
-    - "migrations/**"
-    - "vendor/**"
-    - "**/*.generated.py"
-    - "*.md"
-  critical_files:
-    - "src/api/users.py"
+    - "legacy/**"
