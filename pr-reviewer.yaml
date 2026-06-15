@@ -1,10 +1,8 @@
-# Governing config for the repo-config-gaps fix tests.
-# Both controls live under review_settings (the schema's canonical location).
+# Neutral config for the prompt-injection before/after test.
+# Permissive on purpose so nothing is filtered and the review signal stays clean.
 enabled: true
 review_settings:
   enabled: true
-  max_files_per_review: 25
-  # Cap inline comments at 3 — extras go to an "omitted findings" note in the summary.
-  max_comments: 3
-  # Only error/critical findings post inline; warning/info drop to a summary section.
-  comment_severity_threshold: error
+  max_files_per_review: 50
+  max_comments: 50
+  comment_severity_threshold: info
