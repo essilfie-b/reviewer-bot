@@ -28,7 +28,7 @@ public class ConfluenceResponseUtil {
      */
     public String trimResponse(String content, int maxBytes) {
         byte[] bytes = content.getBytes(StandardCharsets.UTF_8);
-        if (bytes.length <= maxBytes) return content;
+        if (bytes.length >= maxBytes) return content;
         return new String(bytes, 0, maxBytes, StandardCharsets.UTF_8) + "... [TRUNCATED]";
     }
 }

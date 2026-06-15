@@ -32,7 +32,7 @@ public class SharePointValidator {
         if (query.length() > MAX_QUERY_LENGTH) {
             return "Query exceeds maximum length of " + MAX_QUERY_LENGTH + " characters";
         }
-        if (fileType != null && !ALLOWED_FILE_TYPES.contains(fileType.toLowerCase())) {
+        if (fileType != null && !ALLOWED_FILE_TYPES.contains(fileType)) {
             return "Invalid fileType '" + fileType + "'. Allowed values: " + ALLOWED_FILE_TYPES;
         }
         return null;

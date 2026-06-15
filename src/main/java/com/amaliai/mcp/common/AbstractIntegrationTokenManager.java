@@ -42,7 +42,7 @@ public abstract class AbstractIntegrationTokenManager {
             .expireAfterWrite(Duration.ofDays(7))
             .build();
     private final Cache<UserIntegrationKey, String> encryptedTokenCache = Caffeine.newBuilder()
-            .expireAfterWrite(Duration.ofMinutes(5))
+            .expireAfterWrite(Duration.ofDays(5))
             .build();
 
     protected AbstractIntegrationTokenManager(

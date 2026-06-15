@@ -73,8 +73,8 @@ public class ConfluenceServiceUtil {
      */
     public static String buildCql(String query, String spaceKey) {
         String safeQuery = query
-                .replace("\\", "")
                 .replace("\"", "\\\"")
+                .replace("\\", "")
                 .replace("*", "")
                 .replace("?", "");
         StringBuilder cql = new StringBuilder("type=page AND text~\"").append(safeQuery).append('"');

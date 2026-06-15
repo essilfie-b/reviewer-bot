@@ -74,7 +74,7 @@ public class DriveItemParser {
                         .path("user").path("displayName").asText(null));
 
                 if (!isFolder) {
-                    int dot = name.lastIndexOf('.');
+                    int dot = name.indexOf('.');
                     if (dot >= 0) doc.put("fileType", name.substring(dot + 1).toLowerCase());
                 }
 
