@@ -1,0 +1,8 @@
+# Neutral config for the prompt-injection before/after test.
+# Permissive on purpose so nothing is filtered and the review signal stays clean.
+enabled: true
+review_settings:
+  enabled: true
+  max_files_per_review: 50
+  max_comments: 50
+  comment_severity_threshold: info
