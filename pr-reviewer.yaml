@@ -1,18 +1,10 @@
-# Governing config for the Ticket 11 + Ticket 9 (severity thresholds) integration test.
+# Governing config for the repo-config-gaps fix tests.
+# Both controls live under review_settings (the schema's canonical location).
 enabled: true
-
-# Ticket 9 reads this from the TOP LEVEL. Only ERROR/CRITICAL findings post inline;
-# WARNING/INFO drop to a summary-only "low-severity" section.
-comment_severity_threshold: error
-
 review_settings:
   enabled: true
   max_files_per_review: 25
-  # Mirrored here too, since Ticket 11's schema expects it under review_settings.
+  # Cap inline comments at 3 — extras go to an "omitted findings" note in the summary.
+  max_comments: 3
+  # Only error/critical findings post inline; warning/info drop to a summary section.
   comment_severity_threshold: error
-
-file_rules:
-  enabled: true
-  # Ticket 11 control: findings on these paths are dropped entirely.
-  ignored_files:
-    - "legacy/**"
