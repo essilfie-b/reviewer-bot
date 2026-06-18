@@ -54,6 +54,21 @@ public class SharePointValidator {
     }
 
     /**
+     * Validates the look-back window (in days) for the recent-documents tool.
+     *
+     * @return a human-readable error message, or {@code null} if the window is valid
+     */
+    public String validateRecentDaysWindow(int days) {
+        if (days < 1) {
+            return "days must be at least 1";
+        }
+        if (days > MAX_RECENT_DAYS) {
+            return "days exceeds maximum window of " + MAX_RECENT_DAYS;
+        }
+        return null;
+    }
+
+    /**
      * Builds OData {@code lastModifiedDateTime} filter clauses from ISO-8601 date strings.
      *
      * @throws IllegalArgumentException if either date string is present but not valid ISO-8601

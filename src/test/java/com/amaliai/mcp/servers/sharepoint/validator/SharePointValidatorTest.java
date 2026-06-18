@@ -155,6 +155,47 @@ class SharePointValidatorTest {
     }
 
     @Nested
+    class ValidateRecentDaysWindowTests {
+
+        @Test
+        void validateRecentDaysWindow_withTypicalWindow_returnsNull() {
+            assertThat(validator.validateRecentDaysWindow(7)).isNull();
+        }
+
+        @Test
+        void validateRecentDaysWindow_withMinimumWindow_returnsNull() {
+            assertThat(validator.validateRecentDaysWindow(1)).isNull();
+        }
+
+        @Test
+        void validateRecentDaysWindow_withMaximumWindow_returnsNull() {
+            assertThat(validator.validateRecentDaysWindow(365)).isNull();
+        }
+
+        @Test
+        void validateRecentDaysWindow_withZero_returnsError() {
+            assertThat(validator.validateRecentDaysWindow(0))
+                    .isNotNull()
+                    .contains("at least 1");
+        }
+
+        @Test
+        void validateRecentDaysWindow_withNegative_returnsError() {
+            assertThat(validator.validateRecentDaysWindow(-5))
+                    .isNotNull()
+                    .contains("at least 1");
+        }
+
+        @Test
+        void validateRecentDaysWindow_aboveMaximum_returnsError() {
+            assertThat(validator.validateRecentDaysWindow(366))
+                    .isNotNull()
+                    .contains("maximum window")
+                    .contains("365");
+        }
+    }
+
+    @Nested
     class BuildDateFiltersTests {
 
         @Test
