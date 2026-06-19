@@ -1,33 +1,11 @@
 # AI PR-reviewer configuration for the AmaliAI MCP server.
 #
-# This file is read from the BASE branch a pull request targets, so it governs
-# how every PR into that branch is reviewed. Tuned for a Spring Boot / Maven
-# Java service: focus the reviewer on real source and tests, keep the comment
-# volume sane, and ignore generated or tooling files.
+# NOTE: This file is intentionally INVALID for bug replication.
+# It is valid YAML but omits the required `max_files_per_review` field under
+# review_settings, so it fails the PRReviewerConfig schema.
 enabled: true
 
 review_settings:
-  enabled: true
-  # The codebase is small and cohesive; 25 files comfortably covers any PR.
-  max_files_per_review: 25
-  # Keep feedback focused — surface the most important findings, summarise the rest.
-  max_comments: 10
-  # Only warning-and-above become inline comments; lower-severity notes go to the summary.
+  # Only max_comments is set; max_files_per_review (required) is missing.
+  max_comments: 5
   comment_severity_threshold: warning
-  disabled_categories: []
-
-file_rules:
-  enabled: true
-  # Generated build output, IDE metadata, and the Maven wrapper are not worth reviewing.
-  ignored_files:
-    - "target/**"
-    - "**/*.class"
-    - ".idea/**"
-    - ".mvn/**"
-    - "mvnw"
-    - "mvnw.cmd"
-    - "*.log"
-  # The service and Graph client layers carry the core business logic — review them closely.
-  critical_files:
-    - "src/main/java/com/amaliai/mcp/servers/**/service/**"
-    - "src/main/java/com/amaliai/mcp/servers/**/client/**"
