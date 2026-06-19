@@ -84,6 +84,28 @@ public class SharePointGraphClient {
     }
 
     /**
+     * Lists the drive items that other users have shared with the authenticated
+     * user, as surfaced by the OneDrive "Shared with me" view.
+     * <p>
+     * The {@code /sharedWithMe} endpoint returns each item wrapped with a
+     * {@code remoteItem} facet that points at the file in its owning drive, so
+     * {@code $select}/{@code $orderby} are intentionally omitted here — callers
+     * read the nested fields during parsing instead.
+     *
+     * @param top maximum number of shared items to return
+     */
+    public String fetchSharedWithMe(String token, int top) {
+        log.debug("Graph: GET /me/drive/sharedWithMe top={}", top);
+        return graphClient.get()
+                .uri(b -> b.path("/me/drive/sharedWithMe")
+                        .queryParam("$top", top)
+                        .build())
+                .header(HttpHeaders.AUTHORIZATION, BEARER_PREFIX + token)
+                .retrieve()
+                .body(String.class);
+    }
+
+    /**
      * Fetches metadata for a single drive item (name, size, file facet).
      */
     public String fetchItemMetadata(String token, String itemId) {

@@ -104,6 +104,19 @@ public class SharePointService {
     }
 
     /**
+     * Lists the files and folders other users have shared with the authenticated
+     * user (the OneDrive "Shared with me" view).
+     *
+     * @param top maximum number of shared items to return (default 20, max 50)
+     */
+    public String listSharedWithMe(String token, Integer top) {
+        int limit  = (top == null || top <= 0) ? DEFAULT_TOP : Math.min(top, MAX_TOP);
+        String raw    = graphClient.fetchSharedWithMe(token, limit);
+        String parsed = parseSharedWithMeResponse(raw);
+        return responseUtil.trimResponse(parsed, MAX_RESPONSE_BYTES);
+    }
+
+    /**
      * Downloads a drive item and returns its extracted text content.
      *
      * @throws IllegalArgumentException for invalid inputs, unsupported types,
@@ -456,6 +469,57 @@ public class SharePointService {
             return OBJECT_MAPPER.writeValueAsString(results);
         } catch (JsonProcessingException e) {
             throw new SharePointOperationException("Failed to parse Graph API libraries response", e);
+        }
+    }
+
+    /**
+     * Parses the Graph API {@code /sharedWithMe} response into a simplified JSON array.
+     * <p>
+     * Each entry in the response is a stub whose real file/folder lives in another
+     * user's drive, exposed through the {@code remoteItem} facet. We read the
+     * remote item when present (falling back to the top-level item) and surface the
+     * sharing details ({@code owner}, {@code sharedBy}, {@code sharedDateTime}) so
+     * callers can see who shared each item and when.
+     */
+    private String parseSharedWithMeResponse(String responseBody) {
+        try {
+            JsonNode items = OBJECT_MAPPER.readTree(responseBody).path("value");
+            ArrayNode results = OBJECT_MAPPER.createArrayNode();
+
+            for (JsonNode item : items) {
+                JsonNode remoteItem = item.path("remoteItem");
+                JsonNode source = remoteItem.isMissingNode() ? item : remoteItem;
+
+                String name = source.path(FIELD_NAME).asText("");
+                boolean isFolder = source.has("folder");
+
+                ObjectNode doc = OBJECT_MAPPER.createObjectNode();
+                doc.put(FIELD_ID,        source.path(FIELD_ID).asText(null));
+                doc.put(FIELD_NAME,      name);
+                doc.put("itemType",      isFolder ? "folder" : "file");
+                doc.put(FIELD_WEB_URL,   source.path(FIELD_WEB_URL).asText(null));
+                doc.put(FIELD_SIZE_BYTES, source.path("size").asLong(0L));
+                doc.put("lastModified",  source.path(FIELD_LAST_MODIFIED_DATE_TIME).asText(null));
+
+                if (!isFolder) {
+                    int dot = name.lastIndexOf('.');
+                    if (dot >= 0) doc.put(FIELD_FILE_TYPE, name.substring(dot + 1).toLowerCase());
+                }
+
+                // Sharing details live on the remote item's "shared" facet, with the
+                // top-level item as a fallback for drives that surface it there.
+                JsonNode shared = source.path("shared");
+                if (shared.isMissingNode()) shared = item.path("shared");
+                doc.put("owner",          shared.path("owner").path("user").path(FIELD_DISPLAY_NAME).asText(null));
+                doc.put("sharedBy",       shared.path("sharedBy").path("user").path(FIELD_DISPLAY_NAME).asText(null));
+                doc.put("sharedDateTime", shared.path("sharedDateTime").asText(null));
+
+                results.add(doc);
+            }
+
+            return OBJECT_MAPPER.writeValueAsString(results);
+        } catch (JsonProcessingException e) {
+            throw new SharePointOperationException("Failed to parse Graph API sharedWithMe response", e);
         }
     }
 

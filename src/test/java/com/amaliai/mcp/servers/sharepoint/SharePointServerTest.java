@@ -210,6 +210,30 @@ class SharePointServerTest {
     }
 
     @Nested
+    class GetSharedWithMeTests {
+
+        @Test
+        void getSharedWithMe_withoutTop_delegatesCorrectly() {
+            when(sharePointService.listSharedWithMe(TOKEN, null)).thenReturn(RESULT);
+
+            String result = sharePointServer.getSharedWithMe(ARMS_USER_ID, null);
+
+            assertThat(result).isEqualTo(RESULT);
+            verify(sharePointService).listSharedWithMe(TOKEN, null);
+        }
+
+        @Test
+        void getSharedWithMe_withTop_delegatesCorrectly() {
+            when(sharePointService.listSharedWithMe(TOKEN, 30)).thenReturn(RESULT);
+
+            String result = sharePointServer.getSharedWithMe(ARMS_USER_ID, 30);
+
+            assertThat(result).isEqualTo(RESULT);
+            verify(sharePointService).listSharedWithMe(TOKEN, 30);
+        }
+    }
+
+    @Nested
     class DownloadFileTests {
 
         @Test
