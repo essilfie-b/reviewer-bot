@@ -110,6 +110,17 @@ Retrieves all documents from the user's SharePoint with optional date range filt
 
 **Returns**: Document list in string format
 
+#### getSharedWithMe
+Lists files and folders that other people have shared with the authenticated user (the
+OneDrive "Shared with me" view). Each entry includes the owner, who shared it, and when.
+
+**Parameters**:
+- `armsUserId` (int): User ID from ARMS system
+- `top` (Integer): Maximum number of shared items to return (default 20, max 50, optional)
+
+**Returns**: JSON array of shared items, each with `id`, `name`, `itemType`, `webUrl`,
+`sizeBytes`, `fileType`, `owner`, `sharedBy`, and `sharedDateTime`
+
 ## Development
 
 ### Running Tests

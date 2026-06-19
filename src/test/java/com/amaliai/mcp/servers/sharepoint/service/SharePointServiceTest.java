@@ -171,6 +171,63 @@ class SharePointServiceTest {
     }
 
     @Nested
+    class ListSharedWithMeTests {
+
+        // A realistic /sharedWithMe payload: the shared file lives in another
+        // user's drive and is exposed through the "remoteItem" facet.
+        private static final String SHARED_RESPONSE = "{\"value\":[{"
+                + "\"id\":\"local-stub-1\","
+                + "\"remoteItem\":{"
+                + "  \"id\":\"remote-1\","
+                + "  \"name\":\"Q3-Budget.xlsx\","
+                + "  \"size\":2048,"
+                + "  \"webUrl\":\"https://contoso.sharepoint.com/Q3-Budget.xlsx\","
+                + "  \"lastModifiedDateTime\":\"2026-06-01T10:00:00Z\","
+                + "  \"file\":{\"mimeType\":\"application/vnd.openxmlformats\"},"
+                + "  \"shared\":{"
+                + "    \"owner\":{\"user\":{\"displayName\":\"Alice Owner\"}},"
+                + "    \"sharedBy\":{\"user\":{\"displayName\":\"Bob Sharer\"}},"
+                + "    \"sharedDateTime\":\"2026-06-02T09:00:00Z\"}}}]}";
+
+        @Test
+        void listSharedWithMe_withoutTop_usesDefaultAndParsesRemoteItem() {
+            when(graphClient.fetchSharedWithMe(TOKEN, 20)).thenReturn(SHARED_RESPONSE);
+
+            String result = service.listSharedWithMe(TOKEN, null);
+
+            assertThat(result)
+                    .contains("remote-1")
+                    .contains("Q3-Budget.xlsx")
+                    .contains("\"itemType\":\"file\"")
+                    .contains("\"fileType\":\"xlsx\"")
+                    .contains("Alice Owner")
+                    .contains("Bob Sharer")
+                    .contains("2026-06-02T09:00:00Z");
+            verify(graphClient).fetchSharedWithMe(TOKEN, 20);
+        }
+
+        @Test
+        void listSharedWithMe_withCustomTop_respectsLimit() {
+            when(graphClient.fetchSharedWithMe(TOKEN, 15)).thenReturn(EMPTY_ITEMS_RESPONSE);
+
+            String result = service.listSharedWithMe(TOKEN, 15);
+
+            assertThat(result).isEqualTo("[]");
+            verify(graphClient).fetchSharedWithMe(TOKEN, 15);
+        }
+
+        @Test
+        void listSharedWithMe_withTopExceedingMax_clampsToMax() {
+            when(graphClient.fetchSharedWithMe(TOKEN, 50)).thenReturn(EMPTY_ITEMS_RESPONSE);
+
+            String result = service.listSharedWithMe(TOKEN, 100);
+
+            assertThat(result).isEqualTo("[]");
+            verify(graphClient).fetchSharedWithMe(TOKEN, 50);
+        }
+    }
+
+    @Nested
     class GetFileMetadataTests {
 
         @Test

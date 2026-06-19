@@ -140,6 +140,20 @@ public class SharePointServer {
             return sharePointService.listLibraries(token, siteId, top);
     }
 
+    @Tool(description = "Lists files and folders that other people have shared with the authenticated user "
+            + "(the OneDrive 'Shared with me' view). "
+            + "Returns item IDs, names, item type (file/folder), URLs, sizes, file types, "
+            + "the owner, who shared each item, and when it was shared. "
+            + "Use the returned 'id' field with getDocumentContent to read a shared file's content.")
+    public String getSharedWithMe(
+            @ToolParam(description = "The ARMS user ID of the authenticated user") int armsUserId,
+            @ToolParam(description = "Maximum number of shared items to return (default 20, max 50)", required = false) Integer top) {
+
+        UUID integrationId = tokenManager.resolveIntegrationId();
+        String token = tokenManager.getAccessToken(armsUserId, integrationId);
+        return sharePointService.listSharedWithMe(token, top);
+    }
+
     @Tool(description = "Generates a direct, time-limited download URL for a file in the user's OneDrive or SharePoint. "
             + "Returns the file name, type, MIME type, size in bytes, and a pre-signed 'downloadUrl' that the user can open "
             + "in a browser or use with any HTTP client to download the actual file — no further authentication is required. "
