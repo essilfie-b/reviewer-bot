@@ -32,4 +32,14 @@ public class SharePointResponseUtil {
         if (bytes.length <= maxBytes) return content;
         return new String(bytes, 0, maxBytes, StandardCharsets.UTF_8) + "... [TRUNCATED]";
     }
+
+    /**
+     * Wraps an already-serialised JSON payload in the standard success envelope.
+     *
+     * @param tool the tool name (e.g. {@code "getDocumentContent"})
+     * @param data the already-serialised JSON payload to embed
+     */
+    public String wrapSuccess(String tool, String data) {
+        return String.format("{\"tool\":\"%s\",\"data\":%s}", tool, data);
+    }
 }
