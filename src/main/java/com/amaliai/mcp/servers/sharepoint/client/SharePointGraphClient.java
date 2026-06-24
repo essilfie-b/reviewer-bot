@@ -84,6 +84,28 @@ public class SharePointGraphClient {
     }
 
     /**
+     * Lists the user's OneDrive files modified on or after the given timestamp,
+     * ordered by most-recently-modified first.
+     *
+     * @param sinceIso ISO-8601 lower bound on {@code lastModifiedDateTime}
+     * @param top      maximum result count
+     */
+    public String fetchRecentItems(String token, String sinceIso, int top) {
+        log.debug("Graph: GET /me/drive/root/children since={} top={} token={}", sinceIso, top, token);
+        String filter = "lastModifiedDateTime ge " + sinceIso;
+        return graphClient.get()
+                .uri(b -> b.path("/me/drive/root/children")
+                        .queryParam("$select", SELECT_ITEM_FIELDS)
+                        .queryParam("$top", top)
+                        .queryParam("$filter", filter)
+                        .queryParam("$orderby", "lastModifiedDateTime desc")
+                        .build())
+                .header(HttpHeaders.AUTHORIZATION, BEARER_PREFIX + token)
+                .retrieve()
+                .body(String.class);
+    }
+
+    /**
      * Fetches metadata for a single drive item (name, size, file facet).
      */
     public String fetchItemMetadata(String token, String itemId) {

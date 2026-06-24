@@ -25,6 +25,7 @@ public final class SharePointConstants {
     public static final String TOOL_LIST_LIBRARIES = "listLibraries";
     public static final String TOOL_FOLDER   = "getFolderContents";
     public static final String TOOL_DOWNLOAD_URL  = "downloadFile";
+    public static final String TOOL_RECENT   = "getRecentDocuments";
 
     // -------------------------------------------------------------------------
     // Allowed / supported file types
@@ -44,6 +45,16 @@ public final class SharePointConstants {
 
     public static final int DEFAULT_TOP = 20;
     public static final int MAX_TOP     = 50;
+
+    // -------------------------------------------------------------------------
+    // Recent-documents window
+    // -------------------------------------------------------------------------
+
+    /** Default look-back window (in days) for the recent-documents tool. */
+    public static final int DEFAULT_RECENT_DAYS = 7;
+
+    /** Maximum look-back window (in days) accepted by the recent-documents tool. */
+    public static final int MAX_RECENT_DAYS = 365;
 
     // -------------------------------------------------------------------------
     // Size / length caps

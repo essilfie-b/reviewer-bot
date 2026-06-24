@@ -140,6 +140,24 @@ public class SharePointServer {
             return sharePointService.listLibraries(token, siteId, top);
     }
 
+    @Tool(description = "Lists documents in the authenticated user's OneDrive that were modified within the last N days. "
+            + "Returns item IDs, file names, URLs, sizes, file types, and last modified dates, "
+            + "ordered by most-recently-modified first. "
+            + "Optionally filter by file type and cap the number of results via the filter parameter. "
+            + "Use the returned 'id' field with getDocumentContent to read a file's content.")
+    public String getRecentDocuments(
+            @ToolParam(description = "The ARMS user ID of the authenticated user") int armsUserId,
+            @ToolParam(description = "Look-back window in days (1-365, default 7)") int days,
+            @ToolParam(description = "Optional filters: fileType (docx/pdf/xlsx/pptx/txt/csv/md/html/xml), "
+                    + "top (max results, default 20 max 50)", required = false) RecentFilter filter) {
+
+        UUID integrationId = tokenManager.resolveIntegrationId();
+        String token = tokenManager.getAccessToken(armsUserId, integrationId);
+        return sharePointService.listRecentDocuments(token, days,
+                filter != null ? filter.fileType() : null,
+                filter != null ? filter.top() : null);
+    }
+
     @Tool(description = "Generates a direct, time-limited download URL for a file in the user's OneDrive or SharePoint. "
             + "Returns the file name, type, MIME type, size in bytes, and a pre-signed 'downloadUrl' that the user can open "
             + "in a browser or use with any HTTP client to download the actual file — no further authentication is required. "

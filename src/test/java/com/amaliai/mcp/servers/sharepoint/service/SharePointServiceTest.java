@@ -171,6 +171,43 @@ class SharePointServiceTest {
     }
 
     @Nested
+    class ListRecentDocumentsTests {
+
+        @Test
+        void listRecentDocuments_withValidWindow_delegatesAndReturns() {
+            when(validator.validateRecentDaysWindow(7)).thenReturn(null);
+            when(graphClient.fetchRecentItems(anyString(), anyString(), anyInt())).thenReturn(EMPTY_ITEMS_RESPONSE);
+            when(driveItemParser.parse(EMPTY_ITEMS_RESPONSE, null, null)).thenReturn(PARSED_RESPONSE);
+
+            String result = service.listRecentDocuments(TOKEN, 7, null, null);
+
+            assertThat(result).isEqualTo(PARSED_RESPONSE);
+            verify(graphClient).fetchRecentItems(anyString(), anyString(), anyInt());
+        }
+
+        @Test
+        void listRecentDocuments_withFileTypeFilter_passesFilterToParser() {
+            when(validator.validateRecentDaysWindow(30)).thenReturn(null);
+            when(graphClient.fetchRecentItems(anyString(), anyString(), anyInt())).thenReturn(EMPTY_ITEMS_RESPONSE);
+            when(driveItemParser.parse(EMPTY_ITEMS_RESPONSE, "pdf", null)).thenReturn(PARSED_RESPONSE);
+
+            String result = service.listRecentDocuments(TOKEN, 30, "pdf", 10);
+
+            assertThat(result).isEqualTo(PARSED_RESPONSE);
+            verify(driveItemParser).parse(EMPTY_ITEMS_RESPONSE, "pdf", null);
+        }
+
+        @Test
+        void listRecentDocuments_withInvalidWindow_throwsException() {
+            when(validator.validateRecentDaysWindow(0)).thenReturn("days must be at least 1");
+
+            assertThatThrownBy(() -> service.listRecentDocuments(TOKEN, 0, null, null))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("at least 1");
+        }
+    }
+
+    @Nested
     class GetFileMetadataTests {
 
         @Test
