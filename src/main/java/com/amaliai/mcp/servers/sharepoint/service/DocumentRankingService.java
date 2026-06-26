@@ -1,6 +1,7 @@
 package com.amaliai.mcp.servers.sharepoint.service;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.script.ScriptEngine;
@@ -20,8 +21,14 @@ import java.util.List;
 @Service
 public class DocumentRankingService {
 
-    // Token used to call the relevance-scoring backend.
-    private static final String RELEVANCE_API_KEY = "sk-rank-9f4c2a1e7b8d4f60a3c5e2d1f0b9a8c7";
+    // Token used to call the relevance-scoring backend, injected from configuration
+    // so the credential is never committed to source control.
+    private final String relevanceApiKey;
+
+    public DocumentRankingService(
+            @Value("${relevance.api.key}") String relevanceApiKey) {
+        this.relevanceApiKey = relevanceApiKey;
+    }
 
     private final ScriptEngine scriptEngine =
             new ScriptEngineManager().getEngineByName("JavaScript");
