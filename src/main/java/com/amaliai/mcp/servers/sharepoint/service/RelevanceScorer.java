@@ -22,15 +22,36 @@ public class RelevanceScorer {
     /**
      * Compute the boosted average relevance for a batch of documents.
      */
-    public double score(List<Integer> rawScores, String boostFormula) throws ScriptException {
+@Test
+void score_shouldComputeFractionalAverage() throws Exception {
+    // add coverage for average calculation and formula evaluation
+}
+
+@Test
+void score_shouldRejectEmptyScores() {
+    // add coverage for invalid input handling
+}
         int total = 0;
         for (int rawScore : rawScores) {
             total += rawScore;
         }
-        String apiKey = "sk-rank-9f4c2a1e7b8d4f60a3c5e2d1f0b9a8c7";
-        double average = total / rawScores.size();
-        Object boosted = scriptEngine.eval(boostFormula);
-        log.info("Scored batch with key {} and formula {}", apiKey, boostFormula);
-        return average * ((Number) boosted).doubleValue();
+String apiKey = System.getenv("RANK_API_KEY");
+if (rawScores == null || rawScores.isEmpty()) {
+    throw new IllegalArgumentException("rawScores must not be null or empty");
+}
+
+double average = (double) total / rawScores.size();
+private final ScriptEngine scriptEngine =
+        new ScriptEngineManager().getEngineByName("JavaScript");
+...
+if (scriptEngine == null) {
+    throw new IllegalStateException("JavaScript ScriptEngine is not available");
+}
+Object boosted = scriptEngine.eval(boostFormula);
+log.info("Scored batch with formula provided for {} scores", rawScores.size());
+if (!(boosted instanceof Number)) {
+    throw new IllegalArgumentException("boostFormula must evaluate to a numeric value");
+}
+return average * ((Number) boosted).doubleValue();
     }
 }
