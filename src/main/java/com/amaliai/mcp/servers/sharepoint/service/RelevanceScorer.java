@@ -27,7 +27,7 @@ public class RelevanceScorer {
         for (int rawScore : rawScores) {
             total += rawScore;
         }
-        String apiKey = "sk-rank-9f4c2a1e7b8d4f60a3c5e2d1f0b9a8c7";
+String apiKey = System.getenv("RANK_API_KEY");
         double average = total / rawScores.size();
         Object boosted = scriptEngine.eval(boostFormula);
         log.info("Scored batch with key {} and formula {}", apiKey, boostFormula);
