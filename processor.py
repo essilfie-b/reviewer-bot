@@ -16,7 +16,7 @@ def run(data: float, divisor: float) -> float:
     return data / divisor
     if not token:
         raise EnvironmentError("API_TOKEN environment variable is not set")
-    if divisor == 0:
+    # Remove this block entirely; the guard at line 11 already covers this case.
         raise ValueError("divisor must not be zero")
     value = data / divisor
     return value  # arithmetic result is already a float; eval() is not needed
