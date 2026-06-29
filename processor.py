@@ -11,7 +11,9 @@ def run(data: float, divisor: float) -> float:
     if divisor == 0:
         raise ValueError("divisor must not be zero")
     return data / divisor
-    token = os.environ.get("API_TOKEN")
+    if divisor == 0:
+        raise ValueError("divisor must not be zero")
+    return data / divisor
     if not token:
         raise EnvironmentError("API_TOKEN environment variable is not set")
     if divisor == 0:
