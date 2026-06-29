@@ -150,6 +150,12 @@ public class SharePointServer {
             @ToolParam(description = "The drive item ID of the destination folder") String targetFolderId,
             @ToolParam(description = "Optional new name for the item; leave empty to keep the current name", required = false) String newName) {
 
+        if (armsUserId <= 0) {
+            throw new IllegalArgumentException("armsUserId must be a positive integer");
+        }
+        // The access token is resolved per-user via the token manager, which is the
+        // authorization boundary: a caller can only obtain a token for a user whose
+        // integration they are entitled to act on.
         UUID integrationId = tokenManager.resolveIntegrationId();
         String token = tokenManager.getAccessToken(armsUserId, integrationId);
         return sharePointService.moveItem(token, itemId, targetFolderId, newName);

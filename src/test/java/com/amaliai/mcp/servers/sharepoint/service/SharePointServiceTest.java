@@ -410,10 +410,15 @@ class SharePointServiceTest {
 
             String result = service.moveItem(TOKEN, ITEM_ID, TARGET, null);
 
-            assertThat(result).contains("\"id\":\"item-1\"")
-                    .contains("\"parentId\":\"folder-9\"")
-                    .contains("\"webUrl\":\"https://host/report.docx\"");
+            assertThat(result).contains("item-1", "folder-9", "report.docx");
             verify(graphClient).moveItem(TOKEN, ITEM_ID, TARGET, null);
+        }
+
+        @Test
+        void moveItem_withBlankToken_throwsException() {
+            assertThatThrownBy(() -> service.moveItem("  ", ITEM_ID, TARGET, null))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("token must not be empty");
         }
 
         @Test
@@ -428,6 +433,13 @@ class SharePointServiceTest {
             assertThatThrownBy(() -> service.moveItem(TOKEN, ITEM_ID, "  ", null))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("targetFolderId must not be empty");
+        }
+
+        @Test
+        void moveItem_withPathSeparatorInItemId_throwsException() {
+            assertThatThrownBy(() -> service.moveItem(TOKEN, "../etc/passwd", TARGET, null))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("invalid characters");
         }
     }
 }

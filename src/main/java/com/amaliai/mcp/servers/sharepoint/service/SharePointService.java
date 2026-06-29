@@ -216,16 +216,15 @@ public class SharePointService {
      * @throws IllegalArgumentException if {@code itemId} or {@code targetFolderId} is blank
      */
     public String moveItem(String token, String itemId, String targetFolderId, String newName) {
-        if (itemId == null || itemId.isBlank()) {
-            throw new IllegalArgumentException("itemId must not be empty");
+        if (token == null || token.isBlank()) {
+            throw new IllegalArgumentException("token must not be empty");
         }
-        if (targetFolderId == null || targetFolderId.isBlank()) {
-            throw new IllegalArgumentException("targetFolderId must not be empty");
-        }
+        validateDriveItemId(itemId, "itemId");
+        validateDriveItemId(targetFolderId, "targetFolderId");
 
         JsonNode moved = parseJson(
                 graphClient.moveItem(token, itemId, targetFolderId, newName),
-                "move result for itemId=" + itemId);
+                "move result for itemId=" + sanitizeForMessage(itemId));
 
         ObjectNode result = OBJECT_MAPPER.createObjectNode();
         result.put(FIELD_ID, moved.path(FIELD_ID).asText(null));
@@ -294,6 +293,21 @@ public class SharePointService {
         if (itemId == null || itemId.isBlank()) {
             throw new IllegalArgumentException("itemId must not be empty");
         }
+    }
+
+    /** Validates a Graph drive item ID: non-blank and free of path separators or surrounding whitespace. */
+    private static void validateDriveItemId(String value, String fieldName) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException(fieldName + " must not be empty");
+        }
+        if (!value.equals(value.strip()) || value.contains("/") || value.contains("\\")) {
+            throw new IllegalArgumentException(fieldName + " contains invalid characters");
+        }
+    }
+
+    /** Strips line breaks and tabs so caller-supplied values cannot forge log or exception lines. */
+    private static String sanitizeForMessage(String value) {
+        return value == null ? "" : value.replaceAll("[\\r\\n\\t]", "_");
     }
 
     private ExtractedDocumentMetadata fetchDocumentMetadata(String token, String itemId) {
