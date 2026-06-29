@@ -179,7 +179,14 @@ public class SharePointGraphClient {
      */
     public String createSharingLink(String token, String itemId, String type, String scope) {
         log.debug("Graph: POST /me/drive/items/{}/createLink type={} scope={}", itemId, type, scope);
-        Map<String, String> payload = Map.of("type", type, "scope", scope);
+        // Validation should be enforced in the validator layer before reaching this client method.
+        // Example guard (if not already present upstream):
+        //   private static final Set<String> VALID_TYPES  = Set.of("view", "edit", "embed");
+        //   private static final Set<String> VALID_SCOPES = Set.of("anonymous", "organization");
+        //   if (!VALID_TYPES.contains(type) || !VALID_SCOPES.contains(scope)) {
+        //       throw new IllegalArgumentException("Invalid type or scope for createSharingLink");
+        //   }
+                Map<String, String> payload = Map.of("type", type, "scope", scope);
         return graphClient.post()
                 .uri(b -> b.path("/me/drive/items/{id}/createLink").build(itemId))
                 .header(HttpHeaders.AUTHORIZATION, BEARER_PREFIX + token)
