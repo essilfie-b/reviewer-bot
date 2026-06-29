@@ -178,7 +178,10 @@ public class SharePointGraphClient {
      * @return the raw Graph {@code permission} response containing the {@code link} object
      */
     public String createSharingLink(String token, String itemId, String type, String scope) {
-        log.debug("Graph: POST /me/drive/items/{}/createLink type={} scope={}", itemId, type, scope);
+        log.debug("Graph: POST /me/drive/items/{}/createLink type={} scope={}",
+                itemId  == null ? "null" : itemId.replaceAll("[\r\n]", "_"),
+                type    == null ? "null" : type.replaceAll("[\r\n]", "_"),
+                scope   == null ? "null" : scope.replaceAll("[\r\n]", "_"));
         // Validation should be enforced in the validator layer before reaching this client method.
         // Example guard (if not already present upstream):
         //   private static final Set<String> VALID_TYPES  = Set.of("view", "edit", "embed");
