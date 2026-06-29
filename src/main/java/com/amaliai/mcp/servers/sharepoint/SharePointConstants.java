@@ -25,6 +25,7 @@ public final class SharePointConstants {
     public static final String TOOL_LIST_LIBRARIES = "listLibraries";
     public static final String TOOL_FOLDER   = "getFolderContents";
     public static final String TOOL_DOWNLOAD_URL  = "downloadFile";
+    public static final String TOOL_CREATE_LINK   = "createSharingLink";
 
     // -------------------------------------------------------------------------
     // Allowed / supported file types
@@ -37,6 +38,20 @@ public final class SharePointConstants {
     /** File types supported for text extraction. PPT/PPTX are intentionally excluded. */
     public static final Set<String> SUPPORTED_CONTENT_TYPES =
             Set.of("txt", "md", "csv", "log", "html", "xml", "json", "docx", "xlsx", "pdf");
+
+    // -------------------------------------------------------------------------
+    // Sharing links
+    // -------------------------------------------------------------------------
+
+    /** Link permission levels supported by the Graph {@code createLink} action. */
+    public static final Set<String> ALLOWED_LINK_TYPES = Set.of("view", "edit", "embed");
+
+    /** Audiences a sharing link can target. */
+    public static final Set<String> ALLOWED_LINK_SCOPES = Set.of("anonymous", "organization");
+
+    /** Defaults applied when the caller omits the link type or scope. */
+    public static final String DEFAULT_LINK_TYPE  = "view";
+    public static final String DEFAULT_LINK_SCOPE = "organization";
 
     // -------------------------------------------------------------------------
     // Pagination

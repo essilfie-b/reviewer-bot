@@ -223,5 +223,20 @@ class SharePointServerTest {
             verify(sharePointService).getFileDownloadUrl(TOKEN, itemId);
         }
     }
+
+    @Nested
+    class CreateSharingLinkTests {
+
+        @Test
+        void createSharingLink_delegatesCorrectly() {
+            String itemId = "item-share-001";
+            when(sharePointService.createSharingLink(TOKEN, itemId, "edit", "anonymous")).thenReturn(RESULT);
+
+            String result = sharePointServer.createSharingLink(ARMS_USER_ID, itemId, "edit", "anonymous");
+
+            assertThat(result).isEqualTo(RESULT);
+            verify(sharePointService).createSharingLink(TOKEN, itemId, "edit", "anonymous");
+        }
+    }
 }
 

@@ -395,6 +395,67 @@ class SharePointServiceTest {
                     .hasMessageContaining("siteId must not be empty");
         }
     }
+
+    @Nested
+    class CreateSharingLinkTests {
+
+        private static final String ITEM_ID = "item-123";
+
+        @Test
+        void createSharingLink_withDefaults_appliesViewAndOrganization() {
+            String graphResponse = "{\"id\":\"perm-1\",\"link\":{\"type\":\"view\",\"scope\":\"organization\","
+                    + "\"webUrl\":\"https://share.example/abc\"}}";
+            when(validator.validateSharingLinkInputs("view", "organization")).thenReturn(null);
+            when(graphClient.createSharingLink(TOKEN, ITEM_ID, "view", "organization")).thenReturn(graphResponse);
+
+            String result = service.createSharingLink(TOKEN, ITEM_ID, null, null);
+
+            assertThat(result).contains("\"shareUrl\":\"https://share.example/abc\"")
+                    .contains("\"type\":\"view\"")
+                    .contains("\"scope\":\"organization\"");
+            verify(graphClient).createSharingLink(TOKEN, ITEM_ID, "view", "organization");
+        }
+
+        @Test
+        void createSharingLink_normalizesTypeAndScopeCase() {
+            String graphResponse = "{\"id\":\"perm-2\",\"link\":{\"webUrl\":\"https://share.example/xyz\"}}";
+            when(validator.validateSharingLinkInputs("edit", "anonymous")).thenReturn(null);
+            when(graphClient.createSharingLink(TOKEN, ITEM_ID, "edit", "anonymous")).thenReturn(graphResponse);
+
+            String result = service.createSharingLink(TOKEN, ITEM_ID, "  EDIT ", "Anonymous");
+
+            assertThat(result).contains("https://share.example/xyz");
+            verify(graphClient).createSharingLink(TOKEN, ITEM_ID, "edit", "anonymous");
+        }
+
+        @Test
+        void createSharingLink_withBlankItemId_throwsException() {
+            assertThatThrownBy(() -> service.createSharingLink(TOKEN, "  ", "view", "organization"))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("itemId must not be empty");
+        }
+
+        @Test
+        void createSharingLink_withInvalidType_throwsException() {
+            when(validator.validateSharingLinkInputs("delete", "organization"))
+                    .thenReturn("Invalid link type 'delete'");
+
+            assertThatThrownBy(() -> service.createSharingLink(TOKEN, ITEM_ID, "delete", "organization"))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Invalid link type");
+        }
+
+        @Test
+        void createSharingLink_whenGraphReturnsNoUrl_throwsException() {
+            when(validator.validateSharingLinkInputs("view", "organization")).thenReturn(null);
+            when(graphClient.createSharingLink(TOKEN, ITEM_ID, "view", "organization"))
+                    .thenReturn("{\"id\":\"perm-3\",\"link\":{}}");
+
+            assertThatThrownBy(() -> service.createSharingLink(TOKEN, ITEM_ID, "view", "organization"))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Could not obtain a sharing URL");
+        }
+    }
 }
 
 

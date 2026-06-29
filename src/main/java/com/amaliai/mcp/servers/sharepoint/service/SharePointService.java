@@ -210,6 +210,52 @@ public class SharePointService {
         }
     }
 
+    /**
+     * Creates a shareable link for a drive item.
+     *
+     * <p>When {@code type} or {@code scope} are omitted they fall back to
+     * {@link com.amaliai.mcp.servers.sharepoint.SharePointConstants#DEFAULT_LINK_TYPE}
+     * and {@link com.amaliai.mcp.servers.sharepoint.SharePointConstants#DEFAULT_LINK_SCOPE}.
+     *
+     * @throws IllegalArgumentException if {@code itemId} is blank or the type/scope is unknown
+     */
+    public String createSharingLink(String token, String itemId, String type, String scope) {
+        if (itemId == null || itemId.isBlank()) {
+            throw new IllegalArgumentException("itemId must not be empty");
+        }
+
+        String linkType  = normalizeOrDefault(type, DEFAULT_LINK_TYPE);
+        String linkScope = normalizeOrDefault(scope, DEFAULT_LINK_SCOPE);
+
+        String validationError = validator.validateSharingLinkInputs(linkType, linkScope);
+        if (validationError != null) {
+            throw new IllegalArgumentException(validationError);
+        }
+
+        JsonNode permission = parseJson(
+                graphClient.createSharingLink(token, itemId, linkType, linkScope),
+                "sharing link for itemId=" + itemId);
+        JsonNode link = permission.path("link");
+
+        String shareUrl = link.path(FIELD_WEB_URL).asText(null);
+        if (shareUrl == null || shareUrl.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Could not obtain a sharing URL for item '" + itemId + "'. "
+                    + "The item may not be shareable or sharing is disabled for this tenant.");
+        }
+
+        ObjectNode result = OBJECT_MAPPER.createObjectNode();
+        result.put(FIELD_ID, permission.path(FIELD_ID).asText(null));
+        result.put("type", link.path("type").asText(linkType));
+        result.put("scope", link.path("scope").asText(linkScope));
+        result.put("shareUrl", shareUrl);
+        try {
+            return OBJECT_MAPPER.writeValueAsString(result);
+        } catch (JsonProcessingException e) {
+            throw new SharePointOperationException("Failed to serialize sharing link response", e);
+        }
+    }
+
     // -------------------------------------------------------------------------
     // SharePoint Sites operations
     // -------------------------------------------------------------------------
@@ -369,6 +415,11 @@ public class SharePointService {
     private static String fileExtension(String name) {
         int dot = name.lastIndexOf('.');
         return dot >= 0 ? name.substring(dot + 1).toLowerCase() : "";
+    }
+
+    /** Returns the trimmed, lower-cased value, or {@code fallback} when it is null/blank. */
+    private static String normalizeOrDefault(String value, String fallback) {
+        return (value == null || value.isBlank()) ? fallback : value.trim().toLowerCase();
     }
 
     /** Parses a JSON string, wrapping any {@link JsonProcessingException} as a {@link SharePointOperationException}. */

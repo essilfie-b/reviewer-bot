@@ -155,6 +155,35 @@ class SharePointValidatorTest {
     }
 
     @Nested
+    class ValidateSharingLinkInputsTests {
+
+        @Test
+        void validateSharingLinkInputs_withValidTypeAndScope_returnsNull() {
+            assertThat(validator.validateSharingLinkInputs("view", "organization")).isNull();
+            assertThat(validator.validateSharingLinkInputs("edit", "anonymous")).isNull();
+            assertThat(validator.validateSharingLinkInputs("embed", "organization")).isNull();
+        }
+
+        @Test
+        void validateSharingLinkInputs_withInvalidType_returnsError() {
+            String result = validator.validateSharingLinkInputs("delete", "organization");
+
+            assertThat(result).isNotNull()
+                    .contains("Invalid link type")
+                    .contains("delete");
+        }
+
+        @Test
+        void validateSharingLinkInputs_withInvalidScope_returnsError() {
+            String result = validator.validateSharingLinkInputs("view", "public");
+
+            assertThat(result).isNotNull()
+                    .contains("Invalid link scope")
+                    .contains("public");
+        }
+    }
+
+    @Nested
     class BuildDateFiltersTests {
 
         @Test

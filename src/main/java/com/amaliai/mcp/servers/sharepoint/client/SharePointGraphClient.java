@@ -10,6 +10,7 @@ import org.springframework.web.client.RestClient;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Map;
 
 import static com.amaliai.mcp.servers.sharepoint.SharePointConstants.*;
 
@@ -166,6 +167,25 @@ public class SharePointGraphClient {
                     return null;
                 });
         return locationHolder[0];
+    }
+
+    /**
+     * Creates (or returns the existing) sharing link for a drive item via the
+     * Graph {@code createLink} action.
+     *
+     * @param type  link permission level: {@code view}, {@code edit}, or {@code embed}
+     * @param scope link audience: {@code anonymous} or {@code organization}
+     * @return the raw Graph {@code permission} response containing the {@code link} object
+     */
+    public String createSharingLink(String token, String itemId, String type, String scope) {
+        log.debug("Graph: POST /me/drive/items/{}/createLink type={} scope={}", itemId, type, scope);
+        Map<String, String> payload = Map.of("type", type, "scope", scope);
+        return graphClient.post()
+                .uri(b -> b.path("/me/drive/items/{id}/createLink").build(itemId))
+                .header(HttpHeaders.AUTHORIZATION, BEARER_PREFIX + token)
+                .body(payload)
+                .retrieve()
+                .body(String.class);
     }
 
     // -------------------------------------------------------------------------

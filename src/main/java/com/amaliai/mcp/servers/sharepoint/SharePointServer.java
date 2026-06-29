@@ -140,6 +140,22 @@ public class SharePointServer {
             return sharePointService.listLibraries(token, siteId, top);
     }
 
+    @Tool(description = "Creates a shareable link for a file or folder in the user's OneDrive or SharePoint. "
+            + "Returns the permission 'id', the link 'type' and 'scope', and the 'shareUrl' that can be sent to others. "
+            + "The link type controls what recipients can do: 'view' (read-only, default), 'edit', or 'embed'. "
+            + "The scope controls the audience: 'organization' (anyone in the tenant, default) or 'anonymous' (anyone with the link). "
+            + "Use the 'id' field from getDocuments or searchDocuments as the itemId.")
+    public String createSharingLink(
+            @ToolParam(description = "The ARMS user ID of the authenticated user") int armsUserId,
+            @ToolParam(description = "The drive item ID of the file or folder to share (from getDocuments or searchDocuments)") String itemId,
+            @ToolParam(description = "Link permission level: view, edit, or embed (default view)", required = false) String type,
+            @ToolParam(description = "Link audience: organization or anonymous (default organization)", required = false) String scope) {
+
+        UUID integrationId = tokenManager.resolveIntegrationId();
+        String token = tokenManager.getAccessToken(armsUserId, integrationId);
+        return sharePointService.createSharingLink(token, itemId, type, scope);
+    }
+
     @Tool(description = "Generates a direct, time-limited download URL for a file in the user's OneDrive or SharePoint. "
             + "Returns the file name, type, MIME type, size in bytes, and a pre-signed 'downloadUrl' that the user can open "
             + "in a browser or use with any HTTP client to download the actual file — no further authentication is required. "

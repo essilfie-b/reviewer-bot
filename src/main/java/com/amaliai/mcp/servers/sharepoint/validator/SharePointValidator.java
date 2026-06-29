@@ -54,6 +54,21 @@ public class SharePointValidator {
     }
 
     /**
+     * Validates the sharing-link permission level and audience scope.
+     *
+     * @return a human-readable error message, or {@code null} if both values are valid
+     */
+    public String validateSharingLinkInputs(String type, String scope) {
+        if (!ALLOWED_LINK_TYPES.contains(type)) {
+            return "Invalid link type '" + type + "'. Allowed values: " + ALLOWED_LINK_TYPES;
+        }
+        if (!ALLOWED_LINK_SCOPES.contains(scope)) {
+            return "Invalid link scope '" + scope + "'. Allowed values: " + ALLOWED_LINK_SCOPES;
+        }
+        return null;
+    }
+
+    /**
      * Builds OData {@code lastModifiedDateTime} filter clauses from ISO-8601 date strings.
      *
      * @throws IllegalArgumentException if either date string is present but not valid ISO-8601
