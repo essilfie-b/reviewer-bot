@@ -48,3 +48,17 @@ def load_users(
             return cursor.fetchall()
     except sqlite3.Error as exc:
         raise RuntimeError("Failed to load users") from exc
+
+
+def count_users(db_path: str, role: str = "user") -> int:
+    if not isinstance(db_path, str) or not db_path.strip():
+        raise ValueError("db_path must be a non-empty string")
+
+    resolved_path = os.path.realpath(db_path)
+    try:
+        with sqlite3.connect(resolved_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) FROM users WHERE role = ?", [role])
+            return cursor.fetchone()[0]
+    except sqlite3.Error as exc:
+        raise RuntimeError("Failed to count users") from exc
