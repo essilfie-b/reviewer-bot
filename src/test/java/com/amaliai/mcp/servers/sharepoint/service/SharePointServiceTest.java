@@ -395,6 +395,41 @@ class SharePointServiceTest {
                     .hasMessageContaining("siteId must not be empty");
         }
     }
+
+    @Nested
+    class MoveItemTests {
+
+        private static final String ITEM_ID = "item-1";
+        private static final String TARGET = "folder-9";
+
+        @Test
+        void moveItem_withValidInputs_returnsMovedItem() {
+            String graphResponse = "{\"id\":\"item-1\",\"name\":\"report.docx\","
+                    + "\"webUrl\":\"https://host/report.docx\",\"parentReference\":{\"id\":\"folder-9\"}}";
+            when(graphClient.moveItem(TOKEN, ITEM_ID, TARGET, null)).thenReturn(graphResponse);
+
+            String result = service.moveItem(TOKEN, ITEM_ID, TARGET, null);
+
+            assertThat(result).contains("\"id\":\"item-1\"")
+                    .contains("\"parentId\":\"folder-9\"")
+                    .contains("\"webUrl\":\"https://host/report.docx\"");
+            verify(graphClient).moveItem(TOKEN, ITEM_ID, TARGET, null);
+        }
+
+        @Test
+        void moveItem_withBlankItemId_throwsException() {
+            assertThatThrownBy(() -> service.moveItem(TOKEN, "  ", TARGET, null))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("itemId must not be empty");
+        }
+
+        @Test
+        void moveItem_withBlankTargetFolderId_throwsException() {
+            assertThatThrownBy(() -> service.moveItem(TOKEN, ITEM_ID, "  ", null))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("targetFolderId must not be empty");
+        }
+    }
 }
 
 

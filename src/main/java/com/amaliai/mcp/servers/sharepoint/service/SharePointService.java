@@ -210,6 +210,35 @@ public class SharePointService {
         }
     }
 
+    /**
+     * Moves a drive item to a different folder, optionally renaming it.
+     *
+     * @throws IllegalArgumentException if {@code itemId} or {@code targetFolderId} is blank
+     */
+    public String moveItem(String token, String itemId, String targetFolderId, String newName) {
+        if (itemId == null || itemId.isBlank()) {
+            throw new IllegalArgumentException("itemId must not be empty");
+        }
+        if (targetFolderId == null || targetFolderId.isBlank()) {
+            throw new IllegalArgumentException("targetFolderId must not be empty");
+        }
+
+        JsonNode moved = parseJson(
+                graphClient.moveItem(token, itemId, targetFolderId, newName),
+                "move result for itemId=" + itemId);
+
+        ObjectNode result = OBJECT_MAPPER.createObjectNode();
+        result.put(FIELD_ID, moved.path(FIELD_ID).asText(null));
+        result.put(FIELD_NAME, moved.path(FIELD_NAME).asText(null));
+        result.put(FIELD_WEB_URL, moved.path(FIELD_WEB_URL).asText(null));
+        result.put("parentId", moved.path("parentReference").path(FIELD_ID).asText(null));
+        try {
+            return OBJECT_MAPPER.writeValueAsString(result);
+        } catch (JsonProcessingException e) {
+            throw new SharePointOperationException("Failed to serialize move item response", e);
+        }
+    }
+
     // -------------------------------------------------------------------------
     // SharePoint Sites operations
     // -------------------------------------------------------------------------

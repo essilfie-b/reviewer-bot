@@ -9,7 +9,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 import java.net.URI;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static com.amaliai.mcp.servers.sharepoint.SharePointConstants.*;
 
@@ -166,6 +168,29 @@ public class SharePointGraphClient {
                     return null;
                 });
         return locationHolder[0];
+    }
+
+    /**
+     * Moves a drive item under a new parent folder, optionally renaming it, via a
+     * Graph PATCH on the item's {@code parentReference}.
+     *
+     * @param targetFolderId the drive item ID of the destination folder
+     * @param newName        optional new name; when blank the item keeps its name
+     * @return the raw Graph response for the updated drive item
+     */
+    public String moveItem(String token, String itemId, String targetFolderId, String newName) {
+        log.debug("Graph: PATCH /me/drive/items/{} -> parent {}", itemId, targetFolderId);
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("parentReference", Map.of("id", targetFolderId));
+        if (newName != null && !newName.isBlank()) {
+            payload.put("name", newName);
+        }
+        return graphClient.patch()
+                .uri(b -> b.path("/me/drive/items/{id}").build(itemId))
+                .header(HttpHeaders.AUTHORIZATION, BEARER_PREFIX + token)
+                .body(payload)
+                .retrieve()
+                .body(String.class);
     }
 
     // -------------------------------------------------------------------------
