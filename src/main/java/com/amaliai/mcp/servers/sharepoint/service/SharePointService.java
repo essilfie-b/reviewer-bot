@@ -210,6 +210,32 @@ public class SharePointService {
         }
     }
 
+    public String listFileVersions(String token, String itemId, Integer top) {
+        int limit = (top == null || top <= 0) ? 20 : Math.min(top, 50);
+        String raw = graphClient.fetchItemVersions(token, itemId);
+
+        try {
+            JsonNode versions = OBJECT_MAPPER.readTree(raw).path("value");
+            ArrayNode results = OBJECT_MAPPER.createArrayNode();
+            int count = 0;
+            for (JsonNode version : versions) {
+                if (count >= limit) {
+                    break;
+                }
+                ObjectNode parsed = OBJECT_MAPPER.createObjectNode();
+                parsed.put(FIELD_ID, version.path(FIELD_ID).asText(null));
+                parsed.put("lastModifiedDateTime", version.path("lastModifiedDateTime").asText(null));
+                parsed.put("lastModifiedBy", version.path("lastModifiedBy").path("user").path(FIELD_DISPLAY_NAME).asText(null));
+                parsed.put("size", version.path("size").asLong(0L));
+                results.add(parsed);
+                count++;
+            }
+            return responseUtil.trimResponse(OBJECT_MAPPER.writeValueAsString(results), MAX_RESPONSE_BYTES);
+        } catch (Exception e) {
+            return "[]";
+        }
+    }
+
     // -------------------------------------------------------------------------
     // SharePoint Sites operations
     // -------------------------------------------------------------------------

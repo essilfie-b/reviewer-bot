@@ -221,4 +221,20 @@ public class SharePointGraphClient {
                 .retrieve()
                 .body(String.class);
     }
+
+    /**
+     * Lists the version history of a single drive item, newest first.
+     *
+     * @param itemId the drive item ID
+     */
+    public String fetchItemVersions(String token, String itemId) {
+        log.debug("Graph: GET /me/drive/items/{}/versions", itemId);
+        return graphClient.get()
+                .uri(b -> b.path("/me/drive/items/{id}/versions")
+                        .queryParam("$top", 50)
+                        .build(itemId))
+                .header(HttpHeaders.AUTHORIZATION, BEARER_PREFIX + token)
+                .retrieve()
+                .body(String.class);
+    }
 }
