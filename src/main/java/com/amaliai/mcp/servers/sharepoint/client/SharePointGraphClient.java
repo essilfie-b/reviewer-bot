@@ -231,7 +231,7 @@ public class SharePointGraphClient {
         log.debug("Graph: GET /me/drive/items/{}/permissions", itemId);
         return graphClient.get()
                 .uri(b -> b.path("/me/drive/items/{id}/permissions")
-                        .queryParam("$top", 50)
+                        .queryParam("$top", MAX_TOP)
                         .build(itemId))
                 .header(HttpHeaders.AUTHORIZATION, BEARER_PREFIX + token)
                 .retrieve()

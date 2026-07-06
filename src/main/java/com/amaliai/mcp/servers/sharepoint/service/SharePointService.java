@@ -210,8 +210,17 @@ public class SharePointService {
         }
     }
 
+    /**
+     * Lists the sharing permissions granted on a drive item.
+     *
+     * @param top maximum number of permissions to return (default 20, max 50)
+     * @throws IllegalArgumentException if {@code itemId} is blank
+     */
     public String listFilePermissions(String token, String itemId, Integer top) {
-        int limit = (top == null || top <= 0) ? 20 : Math.min(top, 50);
+        if (itemId == null || itemId.isBlank()) {
+            throw new IllegalArgumentException("itemId must not be empty");
+        }
+        int limit = (top == null || top <= 0) ? DEFAULT_TOP : Math.min(top, MAX_TOP);
         String raw = graphClient.fetchItemPermissions(token, itemId);
 
         try {
@@ -224,15 +233,15 @@ public class SharePointService {
                 }
                 ObjectNode parsed = OBJECT_MAPPER.createObjectNode();
                 parsed.put(FIELD_ID, permission.path(FIELD_ID).asText(null));
-                parsed.put("roles", permission.path("roles").toString());
+                parsed.set("roles", permission.has("roles") ? permission.get("roles") : OBJECT_MAPPER.createArrayNode());
                 parsed.put("grantedTo", permission.path("grantedTo").path("user").path(FIELD_DISPLAY_NAME).asText(null));
-                parsed.put("link", permission.path("link").path("webUrl").asText(null));
+                parsed.put("link", permission.path("link").path(FIELD_WEB_URL).asText(null));
                 results.add(parsed);
                 count++;
             }
             return responseUtil.trimResponse(OBJECT_MAPPER.writeValueAsString(results), MAX_RESPONSE_BYTES);
-        } catch (Exception e) {
-            return "[]";
+        } catch (JsonProcessingException e) {
+            throw new SharePointOperationException("Failed to parse file permissions response for itemId=" + itemId, e);
         }
     }
 
