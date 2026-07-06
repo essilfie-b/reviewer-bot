@@ -140,6 +140,27 @@ public class SharePointServer {
             return sharePointService.listLibraries(token, siteId, top);
     }
 
+    @Tool(description = "Moves a file or folder in the user's OneDrive or SharePoint into a different folder, "
+            + "optionally renaming it in the same operation. Returns the moved item's id, name, web URL, and the "
+            + "id of its new parent folder. Use the 'id' field from getDocuments or getFolderContents as the itemId, "
+            + "and the destination folder's id as the targetFolderId.")
+    public String moveItem(
+            @ToolParam(description = "The ARMS user ID of the authenticated user") int armsUserId,
+            @ToolParam(description = "The drive item ID of the file or folder to move") String itemId,
+            @ToolParam(description = "The drive item ID of the destination folder") String targetFolderId,
+            @ToolParam(description = "Optional new name for the item; leave empty to keep the current name", required = false) String newName) {
+
+        if (armsUserId <= 0) {
+            throw new IllegalArgumentException("armsUserId must be a positive integer");
+        }
+        // The access token is resolved per-user via the token manager, which is the
+        // authorization boundary: a caller can only obtain a token for a user whose
+        // integration they are entitled to act on.
+        UUID integrationId = tokenManager.resolveIntegrationId();
+        String token = tokenManager.getAccessToken(armsUserId, integrationId);
+        return sharePointService.moveItem(token, itemId, targetFolderId, newName);
+    }
+
     @Tool(description = "Generates a direct, time-limited download URL for a file in the user's OneDrive or SharePoint. "
             + "Returns the file name, type, MIME type, size in bytes, and a pre-signed 'downloadUrl' that the user can open "
             + "in a browser or use with any HTTP client to download the actual file — no further authentication is required. "

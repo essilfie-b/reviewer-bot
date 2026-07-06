@@ -223,5 +223,21 @@ class SharePointServerTest {
             verify(sharePointService).getFileDownloadUrl(TOKEN, itemId);
         }
     }
+
+    @Nested
+    class MoveItemTests {
+
+        @Test
+        void moveItem_delegatesCorrectly() {
+            String itemId = "item-move-001";
+            String targetFolderId = "folder-002";
+            when(sharePointService.moveItem(TOKEN, itemId, targetFolderId, "renamed.txt")).thenReturn(RESULT);
+
+            String result = sharePointServer.moveItem(ARMS_USER_ID, itemId, targetFolderId, "renamed.txt");
+
+            assertThat(result).isEqualTo(RESULT);
+            verify(sharePointService).moveItem(TOKEN, itemId, targetFolderId, "renamed.txt");
+        }
+    }
 }
 
