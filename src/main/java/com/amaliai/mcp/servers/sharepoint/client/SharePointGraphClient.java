@@ -231,7 +231,7 @@ public class SharePointGraphClient {
         log.debug("Graph: GET /me/drive/items/{}/versions", itemId);
         return graphClient.get()
                 .uri(b -> b.path("/me/drive/items/{id}/versions")
-                        .queryParam("$top", 50)
+                        .queryParam("$top", MAX_TOP)
                         .build(itemId))
                 .header(HttpHeaders.AUTHORIZATION, BEARER_PREFIX + token)
                 .retrieve()
