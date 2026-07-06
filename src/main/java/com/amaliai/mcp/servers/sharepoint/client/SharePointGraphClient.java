@@ -221,4 +221,20 @@ public class SharePointGraphClient {
                 .retrieve()
                 .body(String.class);
     }
+
+    /**
+     * Lists the sharing permissions granted on a single drive item.
+     *
+     * @param itemId the drive item ID
+     */
+    public String fetchItemPermissions(String token, String itemId) {
+        log.debug("Graph: GET /me/drive/items/{}/permissions", itemId);
+        return graphClient.get()
+                .uri(b -> b.path("/me/drive/items/{id}/permissions")
+                        .queryParam("$top", MAX_TOP)
+                        .build(itemId))
+                .header(HttpHeaders.AUTHORIZATION, BEARER_PREFIX + token)
+                .retrieve()
+                .body(String.class);
+    }
 }
