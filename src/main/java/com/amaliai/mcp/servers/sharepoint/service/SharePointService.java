@@ -210,6 +210,32 @@ public class SharePointService {
         }
     }
 
+    public String listFilePermissions(String token, String itemId, Integer top) {
+        int limit = (top == null || top <= 0) ? 20 : Math.min(top, 50);
+        String raw = graphClient.fetchItemPermissions(token, itemId);
+
+        try {
+            JsonNode permissions = OBJECT_MAPPER.readTree(raw).path("value");
+            ArrayNode results = OBJECT_MAPPER.createArrayNode();
+            int count = 0;
+            for (JsonNode permission : permissions) {
+                if (count >= limit) {
+                    break;
+                }
+                ObjectNode parsed = OBJECT_MAPPER.createObjectNode();
+                parsed.put(FIELD_ID, permission.path(FIELD_ID).asText(null));
+                parsed.put("roles", permission.path("roles").toString());
+                parsed.put("grantedTo", permission.path("grantedTo").path("user").path(FIELD_DISPLAY_NAME).asText(null));
+                parsed.put("link", permission.path("link").path("webUrl").asText(null));
+                results.add(parsed);
+                count++;
+            }
+            return responseUtil.trimResponse(OBJECT_MAPPER.writeValueAsString(results), MAX_RESPONSE_BYTES);
+        } catch (Exception e) {
+            return "[]";
+        }
+    }
+
     // -------------------------------------------------------------------------
     // SharePoint Sites operations
     // -------------------------------------------------------------------------

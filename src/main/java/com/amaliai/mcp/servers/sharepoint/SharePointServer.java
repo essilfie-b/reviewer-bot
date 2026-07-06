@@ -153,4 +153,18 @@ public class SharePointServer {
         String token = tokenManager.getAccessToken(armsUserId, integrationId);
         return sharePointService.getFileDownloadUrl(token, itemId);
     }
+
+    @Tool(description = "Lists the sharing permissions granted on a file in the user's OneDrive or SharePoint. "
+            + "Returns, for each permission, the permission ID, the roles granted (e.g. read/write), "
+            + "the display name of the user it was granted to, and the sharing link URL when present. "
+            + "Use the 'id' field from getDocuments or searchDocuments as the itemId.")
+    public String getFilePermissions(
+            @ToolParam(description = "The ARMS user ID of the authenticated user") int armsUserId,
+            @ToolParam(description = "The drive item ID of the file (from getDocuments or searchDocuments)") String itemId,
+            @ToolParam(description = "Maximum number of permissions to return (default 20, max 50)", required = false) Integer top) {
+
+        UUID integrationId = tokenManager.resolveIntegrationId();
+        String token = tokenManager.getAccessToken(armsUserId, integrationId);
+        return sharePointService.listFilePermissions(token, itemId, top);
+    }
 }
