@@ -153,4 +153,18 @@ public class SharePointServer {
         String token = tokenManager.getAccessToken(armsUserId, integrationId);
         return sharePointService.getFileDownloadUrl(token, itemId);
     }
+
+    @Tool(description = "Lists the version history of a file in the user's OneDrive or SharePoint. "
+            + "Returns, for each version, the version ID, when it was last modified, who modified it, and its size in bytes. "
+            + "Newest versions are returned first. "
+            + "Use the 'id' field from getDocuments or searchDocuments as the itemId.")
+    public String getFileVersions(
+            @ToolParam(description = "The ARMS user ID of the authenticated user") int armsUserId,
+            @ToolParam(description = "The drive item ID of the file (from getDocuments or searchDocuments)") String itemId,
+            @ToolParam(description = "Maximum number of versions to return (default 20, max 50)", required = false) Integer top) {
+
+        UUID integrationId = tokenManager.resolveIntegrationId();
+        String token = tokenManager.getAccessToken(armsUserId, integrationId);
+        return sharePointService.listFileVersions(token, itemId, top);
+    }
 }

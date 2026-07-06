@@ -210,6 +210,41 @@ public class SharePointService {
         }
     }
 
+    /**
+     * Lists the version history of a drive item, newest first.
+     *
+     * @param top maximum number of versions to return (default 20, max 50)
+     * @throws IllegalArgumentException if {@code itemId} is blank
+     */
+    public String listFileVersions(String token, String itemId, Integer top) {
+        if (itemId == null || itemId.isBlank()) {
+            throw new IllegalArgumentException("itemId must not be empty");
+        }
+        int limit = (top == null || top <= 0) ? DEFAULT_TOP : Math.min(top, MAX_TOP);
+        String raw = graphClient.fetchItemVersions(token, itemId);
+
+        try {
+            JsonNode versions = OBJECT_MAPPER.readTree(raw).path("value");
+            ArrayNode results = OBJECT_MAPPER.createArrayNode();
+            int count = 0;
+            for (JsonNode version : versions) {
+                if (count >= limit) {
+                    break;
+                }
+                ObjectNode parsed = OBJECT_MAPPER.createObjectNode();
+                parsed.put(FIELD_ID, version.path(FIELD_ID).asText(null));
+                parsed.put(FIELD_LAST_MODIFIED_DATE_TIME, version.path(FIELD_LAST_MODIFIED_DATE_TIME).asText(null));
+                parsed.put("lastModifiedBy", version.path("lastModifiedBy").path("user").path(FIELD_DISPLAY_NAME).asText(null));
+                parsed.put(FIELD_SIZE_BYTES, version.path("size").asLong(0L));
+                results.add(parsed);
+                count++;
+            }
+            return responseUtil.trimResponse(OBJECT_MAPPER.writeValueAsString(results), MAX_RESPONSE_BYTES);
+        } catch (JsonProcessingException e) {
+            throw new SharePointOperationException("Failed to parse file versions response for itemId=" + itemId, e);
+        }
+    }
+
     // -------------------------------------------------------------------------
     // SharePoint Sites operations
     // -------------------------------------------------------------------------
