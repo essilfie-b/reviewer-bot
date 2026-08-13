@@ -232,4 +232,31 @@ public class ConfluenceGraphClient {
                      return u.build(cloudId, pageId);
                  }), token);
      }
+
+    /**
+     * Lists the pages of a Confluence space, optionally filtered by status.
+     * Supports cursor-based pagination.
+     *
+     * @param token    the user's Confluence access token
+     * @param cloudId  the Atlassian cloud ID identifying the tenant
+     * @param spaceKey the space whose pages to list
+     * @param status   optional page status filter: current|archived|draft
+     * @param limit    maximum number of pages to return per call
+     * @param cursor   optional pagination cursor from a previous response's {@code _links.next}
+     * @return raw JSON response body from {@code GET /wiki/api/v2/spaces/{spaceKey}/pages}
+     */
+    public String getSpacePages(String token, String cloudId, String spaceKey, String status,
+                                int limit, String cursor) {
+        log.debug("Confluence: GET /{}/wiki/api/v2/spaces/{}/pages status={} limit={} cursor={}",
+                cloudId, spaceKey, status, limit, cursor);
+        return fetch(confluenceApiClient.get()
+                .uri(b -> {
+                    var u = b.path("/{cloudId}/wiki/api/v2/spaces/{spaceKey}/pages")
+                            .queryParam(QUERY_PARAM_LIMIT, limit)
+                            .queryParam("body-format", "storage");
+                    if (status != null && !status.isBlank()) u.queryParam("status", status);
+                    if (cursor != null && !cursor.isBlank()) u.queryParam(QUERY_PARAM_CURSOR, cursor);
+                    return u.build(cloudId, spaceKey);
+                }), token);
+    }
 }
