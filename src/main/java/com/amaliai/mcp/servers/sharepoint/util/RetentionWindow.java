@@ -23,3 +23,5 @@ public record RetentionWindow(Instant start, Duration length) {
         return moment != null && !moment.isBefore(start) && moment.isBefore(end());
     }
 }
+
+/* second commit: drives a synchronize event on PRs #113 and #114 */
