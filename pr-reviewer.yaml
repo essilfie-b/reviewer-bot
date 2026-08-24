@@ -11,7 +11,7 @@ review_settings:
   # The codebase is small and cohesive; 25 files comfortably covers any PR.
   max_files_per_review: 25
   # Keep feedback focused — surface the most important findings, summarise the rest.
-  max_comments: 10
+  max_comments: 8
   # Only warning-and-above become inline comments; lower-severity notes go to the summary.
   comment_severity_threshold: warning
   disabled_categories: []
@@ -31,3 +31,5 @@ file_rules:
   critical_files:
     - "src/main/java/com/amaliai/mcp/servers/**/service/**"
     - "src/main/java/com/amaliai/mcp/servers/**/client/**"
+
+# Phase 2 e2e: raise the comment ceiling slightly.
