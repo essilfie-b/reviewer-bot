@@ -7,3 +7,5 @@ public record QuotaTiny2(String siteId, long usedBytes) {
         return usedBytes > limit;
     }
 }
+
+// incremental touch for the partial-failure scenario
