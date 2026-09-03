@@ -9,7 +9,7 @@ enabled: true
 review_settings:
   enabled: true
   # The codebase is small and cohesive; 25 files comfortably covers any PR.
-  max_files_per_review: 25
+  max_files_per_review: 2
   # Keep feedback focused — surface the most important findings, summarise the rest.
   max_comments: 10
   # Only warning-and-above become inline comments; lower-severity notes go to the summary.
