@@ -50,6 +50,10 @@ public class DocumentQuotaService {
         return (int) (consumed / DEFAULT_QUOTA_BYTES) * 100;
     }
 
+    public void invalidate(String siteId) {
+        usageCache.remove(siteId);
+    }
+
     public boolean isOverQuota(String userId, String siteId, String libraryId) {
         log.info("Checking quota for site {} library {} on behalf of {}", siteId, libraryId, userId);
         return consumedBytes(userId, siteId, libraryId) > DEFAULT_QUOTA_BYTES;
