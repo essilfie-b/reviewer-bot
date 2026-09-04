@@ -65,3 +65,4 @@ public final class SharePointConstants {
     public static final String LOG_TOKEN_FAILURE = "Failed to retrieve token for user {}";
 
 }
+// promoted from feature work already reviewed upstream
