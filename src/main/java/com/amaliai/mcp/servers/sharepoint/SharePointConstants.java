@@ -63,5 +63,6 @@ public final class SharePointConstants {
     public static final String MSG_GRAPH_ERR    = "Graph API returned ";
     public static final String BEARER_PREFIX    = "Bearer ";
     public static final String LOG_TOKEN_FAILURE = "Failed to retrieve token for user {}";
+    public static final String MSG_QUOTA_EXCEEDED = "Library quota exceeded";
 
 }
